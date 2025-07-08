@@ -200,12 +200,13 @@ export class RecordingManager {
         duration: this.state.get('recording.duration') / 1000
       });
       
+      this.ui.showSuccess('Recording saved successfully!');
       this.eventBus.emit('recording:uploaded', response);
       
       // Reset status after delay
       setTimeout(() => {
-        this.ui.updateRecordingStatus('', 'info');
-      }, 3000);
+        this.ui.updateRecordingStatus('Ready to record', 'info');
+      }, 2000);
       
     } catch (error) {
       this.handleError(error, 'Failed to upload recording');
@@ -281,7 +282,9 @@ export class RecordingManager {
       
       this.ui.hideLoading(spinner);
       this.ui.removeRecording(filename);
+      this.ui.updateRecordingsCount();
       
+      this.ui.showSuccess('Recording deleted successfully');
       this.eventBus.emit('recording:deleted', { filename });
       
     } catch (error) {
@@ -294,14 +297,19 @@ export class RecordingManager {
    */
   async loadRecordings() {
     try {
+      this.ui.initializeRecordingsList();
+      
       const recordings = await this.service.fetchAll();
       
       recordings.forEach(recording => {
         this.ui.addRecording(recording);
       });
       
+      this.ui.finishLoadingRecordings();
+      
     } catch (error) {
       console.warn('Failed to load recordings:', error);
+      this.ui.finishLoadingRecordings();
     }
   }
 
@@ -326,6 +334,8 @@ export class RecordingManager {
       clearInterval(this.timerId);
       this.timerId = null;
     }
+    // Reset timer display
+    this.ui.updateTimer(0);
   }
 
   /**
