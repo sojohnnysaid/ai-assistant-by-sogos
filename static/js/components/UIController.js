@@ -28,6 +28,15 @@ export class UIController {
       speakingIndicator: document.getElementById('speakingIndicator'),
       clearTranscriptionBtn: document.getElementById('clearTranscriptionBtn'),
       
+      // Chat elements
+      chatContainer: document.getElementById('chatContainer'),
+      chatEmpty: document.getElementById('chatEmpty'),
+      chatMessages: document.getElementById('chatMessages'),
+      clearChatBtn: document.getElementById('clearChatBtn'),
+      chatModeToggle: document.getElementById('chatModeToggle'),
+      aiThinkingIndicator: document.getElementById('aiThinkingIndicator'),
+      audioPlayer: document.getElementById('audioPlayer'),
+      
       // Toast container
       toastContainer: document.getElementById('toastContainer')
     };
@@ -309,5 +318,165 @@ export class UIController {
     if (element) {
       element.style.display = visible ? '' : 'none';
     }
+  }
+
+  /**
+   * Add a chat message
+   * @param {string} text - Message text
+   * @param {string} role - 'user' or 'assistant'
+   */
+  addChatMessage(text, role = 'user') {
+    const messagesEl = this.elements.chatMessages;
+    const emptyEl = this.elements.chatEmpty;
+    const clearBtn = this.elements.clearChatBtn;
+    
+    if (!messagesEl) return;
+    
+    // Hide empty state and show messages
+    if (emptyEl) emptyEl.classList.add('hidden');
+    if (messagesEl) messagesEl.classList.remove('hidden');
+    if (clearBtn) clearBtn.style.display = 'block';
+    
+    // Create message element
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+    
+    const bubble = document.createElement('div');
+    bubble.className = `max-w-[80%] rounded-lg px-3 py-2 ${
+      role === 'user' 
+        ? 'bg-blue-500/20 text-blue-100 border border-blue-500/30' 
+        : 'bg-gray-700/50 text-gray-100 border border-gray-600/30'
+    }`;
+    
+    const textEl = document.createElement('p');
+    textEl.className = 'text-sm leading-relaxed';
+    textEl.textContent = text;
+    
+    bubble.appendChild(textEl);
+    messageDiv.appendChild(bubble);
+    messagesEl.appendChild(messageDiv);
+    
+    // Scroll to bottom
+    const container = this.elements.chatContainer;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }
+
+  /**
+   * Show AI thinking indicator
+   */
+  showAIThinking() {
+    const indicator = this.elements.aiThinkingIndicator;
+    const messagesEl = this.elements.chatMessages;
+    const emptyEl = this.elements.chatEmpty;
+    
+    if (emptyEl) emptyEl.classList.add('hidden');
+    if (messagesEl) messagesEl.classList.remove('hidden');
+    
+    if (indicator) {
+      indicator.classList.remove('hidden');
+      messagesEl.appendChild(indicator);
+      
+      // Scroll to bottom
+      const container = this.elements.chatContainer;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  }
+
+  /**
+   * Hide AI thinking indicator
+   */
+  hideAIThinking() {
+    const indicator = this.elements.aiThinkingIndicator;
+    if (indicator) {
+      indicator.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Clear chat messages
+   */
+  clearChat() {
+    const messagesEl = this.elements.chatMessages;
+    const emptyEl = this.elements.chatEmpty;
+    const clearBtn = this.elements.clearChatBtn;
+    
+    if (messagesEl) {
+      messagesEl.innerHTML = '';
+      messagesEl.classList.add('hidden');
+    }
+    if (emptyEl) emptyEl.classList.remove('hidden');
+    if (clearBtn) clearBtn.style.display = 'none';
+  }
+
+  /**
+   * Update UI for chat mode
+   * @param {boolean} isChatMode - Whether chat mode is active
+   */
+  setChatMode(isChatMode) {
+    const chatContainer = this.elements.chatContainer;
+    const transcriptionOnly = this.elements.transcriptionContainer;
+    
+    if (isChatMode) {
+      // Show chat interface
+      if (chatContainer) chatContainer.style.display = '';
+      if (transcriptionOnly) transcriptionOnly.style.display = 'none';
+    } else {
+      // Show transcription only
+      if (chatContainer) chatContainer.style.display = 'none';
+      if (transcriptionOnly) {
+        transcriptionOnly.style.display = '';
+        transcriptionOnly.classList.remove('hidden');
+      }
+    }
+  }
+
+  /**
+   * Play audio from base64
+   * @param {string} audioBase64 - Base64 encoded audio
+   * @param {string} format - Audio format (default: mp3)
+   */
+  async playAudio(audioBase64, format = 'mp3') {
+    const player = this.elements.audioPlayer;
+    if (!player) return;
+    
+    try {
+      // Convert base64 to blob
+      const byteCharacters = atob(audioBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: `audio/${format}` });
+      
+      // Create blob URL and play
+      const audioUrl = URL.createObjectURL(blob);
+      player.src = audioUrl;
+      
+      // Clean up blob URL when done
+      player.addEventListener('ended', () => {
+        URL.revokeObjectURL(audioUrl);
+      }, { once: true });
+      
+      // Play audio
+      await player.play();
+      
+    } catch (error) {
+      console.error('Failed to play audio:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if chat mode is enabled
+   * @returns {boolean}
+   */
+  isChatMode() {
+    const toggle = this.elements.chatModeToggle;
+    return toggle ? toggle.checked : false;
   }
 }

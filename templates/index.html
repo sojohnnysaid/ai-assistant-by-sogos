@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Transcription</title>
+    <title>AI Voice Chat</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
@@ -41,19 +41,34 @@
             animation: fade-in 0.3s ease-out;
         }
         
-        /* Smooth scrollbar for transcription area */
-        #transcriptionContainer::-webkit-scrollbar {
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        .typing-dots::after {
+            content: '.';
+            animation: dots 1.5s infinite;
+        }
+        
+        /* Chat message styles */
+        .chat-message {
+            animation: fade-in 0.3s ease-out;
+        }
+        
+        /* Smooth scrollbar for chat area */
+        #chatContainer::-webkit-scrollbar {
             width: 6px;
         }
-        #transcriptionContainer::-webkit-scrollbar-track {
+        #chatContainer::-webkit-scrollbar-track {
             background: rgba(0, 0, 0, 0.1);
             border-radius: 3px;
         }
-        #transcriptionContainer::-webkit-scrollbar-thumb {
+        #chatContainer::-webkit-scrollbar-thumb {
             background: rgba(156, 163, 175, 0.3);
             border-radius: 3px;
         }
-        #transcriptionContainer::-webkit-scrollbar-thumb:hover {
+        #chatContainer::-webkit-scrollbar-thumb:hover {
             background: rgba(156, 163, 175, 0.5);
         }
     </style>
@@ -69,68 +84,78 @@
         <!-- Header -->
         <header class="text-center mb-5">
             <h1 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                Live Transcription
+                AI Voice Chat
             </h1>
-            <p class="text-gray-500 text-sm mt-1">Speak and see your words appear in real-time</p>
+            <p class="text-gray-500 text-sm mt-1">Speak with an AI assistant</p>
         </header>
         
-        <!-- Transcription Section -->
+        <!-- Chat Section -->
         <section class="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-gray-700 transition-colors">
+            <!-- Header with controls -->
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-semibold flex items-center gap-2">
                     <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                              d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z">
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
                         </path>
                     </svg>
-                    <span class="hidden sm:inline">Live Transcription</span>
-                    <span class="sm:hidden">Transcription</span>
+                    <span>Chat</span>
                 </h2>
-                <button id="startTranscriptionBtn" 
-                        class="px-3 py-1.5 rounded-md font-medium text-sm transition-all duration-200 flex items-center gap-1.5
-                               bg-blue-500 hover:bg-blue-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                        aria-label="Toggle transcription">
-                    <svg class="w-4 h-4" id="transcriptionIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                              d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
-                        </path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                              d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span id="transcriptionBtnText">Start Listening</span>
-                </button>
+                <div class="flex items-center gap-2">
+                    <!-- Mode Toggle -->
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" id="chatModeToggle" checked class="rounded">
+                        <span class="text-gray-400">AI Chat</span>
+                    </label>
+                    <!-- Listening Button -->
+                    <button id="startTranscriptionBtn" 
+                            class="px-3 py-1.5 rounded-md font-medium text-sm transition-all duration-200 flex items-center gap-1.5
+                                   bg-blue-500 hover:bg-blue-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                            aria-label="Toggle transcription">
+                        <svg class="w-4 h-4" id="transcriptionIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z">
+                            </path>
+                        </svg>
+                        <span id="transcriptionBtnText">Start</span>
+                    </button>
+                </div>
             </div>
             
             <!-- Status Display -->
-            <div class="mb-4">
+            <div class="mb-3">
                 <div class="flex items-center gap-2">
                     <div id="transcriptionStatusDot" 
                          class="w-2 h-2 rounded-full bg-gray-600 transition-colors duration-300"></div>
                     <div id="transcriptionStatus" 
                          class="text-sm font-medium text-gray-500">
-                        Ready to transcribe
+                        Ready
                     </div>
                 </div>
             </div>
             
-            <!-- Transcription Display -->
-            <div id="transcriptionContainer" 
-                 class="relative bg-gray-800/50 rounded-xl p-4 h-[250px] overflow-y-auto border border-gray-700/50">
+            <!-- Chat Messages Display -->
+            <div id="chatContainer" 
+                 class="relative bg-gray-800/50 rounded-xl p-4 h-[350px] overflow-y-auto border border-gray-700/50">
                 <!-- Empty State -->
-                <div id="transcriptionEmpty" class="flex flex-col items-center justify-center h-full">
+                <div id="chatEmpty" class="flex flex-col items-center justify-center h-full">
                     <svg class="w-12 h-12 text-gray-700 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
-                              d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z">
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
                         </path>
                     </svg>
-                    <p class="text-gray-500 text-sm">Click "Start Listening" to begin transcription</p>
-                    <p class="text-gray-600 text-xs mt-1">Speak clearly into your microphone</p>
+                    <p class="text-gray-500 text-sm">Start speaking to begin conversation</p>
+                    <p class="text-gray-600 text-xs mt-1">AI will respond with voice</p>
                 </div>
                 
-                <!-- Transcription Text -->
-                <div id="transcriptionTextWrapper" class="hidden">
-                    <p id="transcriptionText" 
-                       class="text-gray-200 leading-relaxed whitespace-pre-wrap"></p>
+                <!-- Chat Messages -->
+                <div id="chatMessages" class="hidden space-y-3">
+                    <!-- Messages will be inserted here -->
+                </div>
+                
+                <!-- Transcription Only Display (when chat mode is off) -->
+                <div id="transcriptionContainer" class="hidden">
+                    <p id="transcriptionText" class="text-gray-200 leading-relaxed whitespace-pre-wrap"></p>
                     <span id="transcriptionCursor" 
                           class="inline-block w-0.5 h-5 bg-blue-500 animate-pulse ml-1 align-middle hidden"></span>
                 </div>
@@ -147,17 +172,32 @@
                         <span class="text-xs font-medium text-blue-400">Listening</span>
                     </div>
                 </div>
+                
+                <!-- AI Thinking Indicator -->
+                <div id="aiThinkingIndicator" class="hidden">
+                    <div class="flex items-center gap-2 text-gray-400 text-sm">
+                        <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
+                        </svg>
+                        <span class="typing-dots">AI is thinking</span>
+                    </div>
+                </div>
             </div>
             
             <!-- Clear Button -->
-            <div class="mt-4 flex justify-end">
-                <button id="clearTranscriptionBtn" 
+            <div class="mt-3 flex justify-end">
+                <button id="clearChatBtn" 
                         class="px-3 py-1 text-sm text-gray-500 hover:text-gray-300 transition-colors"
                         style="display: none;">
-                    Clear transcript
+                    Clear chat
                 </button>
             </div>
         </section>
+        
+        <!-- Audio Player (hidden) -->
+        <audio id="audioPlayer" class="hidden"></audio>
     </div>
 
     <!-- Load main application module -->

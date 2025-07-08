@@ -1,5 +1,5 @@
 /**
- * Main application entry point - Live Transcription Only
+ * Main application entry point - AI Voice Chat
  */
 
 // Import all modules
@@ -10,12 +10,13 @@ import { ConsoleFilter } from './utils/ConsoleFilter.js';
 import { TranscriptionWorker } from './services/TranscriptionWorker.js';
 import { SimpleVAD } from './services/SimpleVAD.js';
 import { SimpleTranscriptionManager } from './services/SimpleTranscriptionManager.js';
+import { AIChatService } from './services/AIChatService.js';
 import { UIController } from './components/UIController.js';
 
 /**
- * TranscriptionApp - Main application class for transcription
+ * VoiceChatApp - Main application class for AI voice chat
  */
-class TranscriptionApp {
+class VoiceChatApp {
   constructor() {
     // Core instances
     this.eventBus = new EventBus();
@@ -24,6 +25,10 @@ class TranscriptionApp {
         isActive: false,
         text: '',
         isSpeaking: false
+      },
+      chat: {
+        mode: 'ai', // 'ai' or 'transcription'
+        isProcessing: false
       }
     });
     this.errorHandler = new ErrorHandler(this.eventBus);
@@ -31,7 +36,7 @@ class TranscriptionApp {
     // UI controller
     this.ui = new UIController();
     
-    // Transcription components
+    // Services
     this.transcriptionWorker = new TranscriptionWorker();
     this.vadManager = new SimpleVAD();
     this.transcriptionManager = new SimpleTranscriptionManager({
@@ -39,18 +44,20 @@ class TranscriptionApp {
       vad: this.vadManager,
       eventBus: this.eventBus
     });
+    this.aiChatService = new AIChatService();
     
     // Bind methods
     this.startTranscription = this.startTranscription.bind(this);
     this.stopTranscription = this.stopTranscription.bind(this);
-    this.clearTranscription = this.clearTranscription.bind(this);
+    this.clearChat = this.clearChat.bind(this);
+    this.handleChatModeToggle = this.handleChatModeToggle.bind(this);
   }
 
   /**
    * Initialize the application
    */
   async initialize() {
-    console.log('Initializing transcription app...');
+    console.log('Initializing voice chat app...');
     
     // Set up event listeners
     this.setupEventListeners();
@@ -58,10 +65,10 @@ class TranscriptionApp {
     // Set up transcription event handlers
     this.setupTranscriptionHandlers();
     
-    // Initialize UI
-    this.ui.clearTranscription();
+    // Initialize UI based on mode
+    this.updateUIMode();
     
-    console.log('Transcription app initialized');
+    console.log('Voice chat app initialized');
   }
 
   /**
@@ -82,9 +89,15 @@ class TranscriptionApp {
     }
     
     // Clear button
-    const clearBtn = this.ui.elements.clearTranscriptionBtn;
+    const clearBtn = this.ui.elements.clearChatBtn;
     if (clearBtn) {
-      clearBtn.addEventListener('click', this.clearTranscription);
+      clearBtn.addEventListener('click', this.clearChat);
+    }
+    
+    // Chat mode toggle
+    const chatToggle = this.ui.elements.chatModeToggle;
+    if (chatToggle) {
+      chatToggle.addEventListener('change', this.handleChatModeToggle);
     }
   }
 
@@ -103,7 +116,7 @@ class TranscriptionApp {
       this.state.set('transcription.isActive', false);
       this.state.set('transcription.isSpeaking', false);
       this.ui.updateTranscriptionButton('idle');
-      this.ui.updateTranscriptionStatus('Ready to transcribe', false, false);
+      this.ui.updateTranscriptionStatus('Ready', false, false);
     });
     
     // Status updates
@@ -116,9 +129,20 @@ class TranscriptionApp {
     });
     
     // Transcription received
-    this.eventBus.on('transcription:transcription', (data) => {
+    this.eventBus.on('transcription:transcription', async (data) => {
       if (data.text && data.text.trim()) {
-        this.ui.appendTranscription(data.text.trim());
+        const cleanText = data.text.trim();
+        
+        if (this.isAIChatMode()) {
+          // Add user message to chat
+          this.ui.addChatMessage(cleanText, 'user');
+          
+          // Process with AI
+          await this.processAIResponse(cleanText);
+        } else {
+          // Just show transcription
+          this.ui.appendTranscription(cleanText);
+        }
       }
     });
     
@@ -131,6 +155,68 @@ class TranscriptionApp {
   }
 
   /**
+   * Process AI response for a user message
+   * @param {string} userMessage - User's transcribed message
+   */
+  async processAIResponse(userMessage) {
+    if (this.state.get('chat.isProcessing')) {
+      return;
+    }
+    
+    this.state.set('chat.isProcessing', true);
+    this.ui.showAIThinking();
+    
+    try {
+      // Get AI response with voice
+      const response = await this.aiChatService.sendMessage(userMessage);
+      
+      // Hide thinking indicator
+      this.ui.hideAIThinking();
+      
+      // Add AI message to chat
+      this.ui.addChatMessage(response.text, 'assistant');
+      
+      // Play AI voice response
+      if (response.audio) {
+        await this.ui.playAudio(response.audio, response.audioFormat);
+      }
+      
+    } catch (error) {
+      console.error('AI chat error:', error);
+      this.ui.hideAIThinking();
+      this.ui.showError('Failed to get AI response. Please try again.');
+    } finally {
+      this.state.set('chat.isProcessing', false);
+    }
+  }
+
+  /**
+   * Handle chat mode toggle
+   */
+  handleChatModeToggle(event) {
+    const isAIMode = event.target.checked;
+    this.state.set('chat.mode', isAIMode ? 'ai' : 'transcription');
+    this.updateUIMode();
+    this.clearChat();
+  }
+
+  /**
+   * Update UI based on current mode
+   */
+  updateUIMode() {
+    const isAIMode = this.isAIChatMode();
+    this.ui.setChatMode(isAIMode);
+  }
+
+  /**
+   * Check if in AI chat mode
+   * @returns {boolean}
+   */
+  isAIChatMode() {
+    return this.state.get('chat.mode') === 'ai';
+  }
+
+  /**
    * Start transcription
    */
   async startTranscription() {
@@ -139,7 +225,7 @@ class TranscriptionApp {
       await this.transcriptionManager.start();
     } catch (error) {
       console.error('Failed to start transcription:', error);
-      this.ui.showError('Failed to start transcription. Please check microphone permissions.');
+      this.ui.showError('Failed to start listening. Please check microphone permissions.');
       this.ui.updateTranscriptionButton('idle');
     }
   }
@@ -152,15 +238,20 @@ class TranscriptionApp {
       await this.transcriptionManager.stop();
     } catch (error) {
       console.error('Failed to stop transcription:', error);
-      this.ui.showError('Failed to stop transcription');
+      this.ui.showError('Failed to stop listening');
     }
   }
 
   /**
-   * Clear transcription
+   * Clear chat/transcription
    */
-  clearTranscription() {
-    this.ui.clearTranscription();
+  clearChat() {
+    if (this.isAIChatMode()) {
+      this.ui.clearChat();
+      this.aiChatService.clearHistory();
+    } else {
+      this.ui.clearTranscription();
+    }
     this.state.set('transcription.text', '');
   }
 
@@ -185,7 +276,7 @@ async function initializeApp() {
     });
     
     // Create and initialize app
-    const app = new TranscriptionApp();
+    const app = new VoiceChatApp();
     await app.initialize();
     
     // Make app instance available globally for debugging
@@ -197,15 +288,17 @@ async function initializeApp() {
       // Debug helpers
       debug: {
         getState: () => app.state.get(),
-        getTranscriptionStatus: () => app.transcriptionManager.getStatus?.() || {
+        getChatHistory: () => app.aiChatService.getHistory(),
+        getTranscriptionStatus: () => ({
           isActive: app.state.get('transcription.isActive'),
           isSpeaking: app.state.get('transcription.isSpeaking')
-        },
+        }),
         
         // Manual controls
         startTranscription: () => app.startTranscription(),
         stopTranscription: () => app.stopTranscription(),
-        clearTranscription: () => app.clearTranscription()
+        clearChat: () => app.clearChat(),
+        sendMessage: (text) => app.processAIResponse(text)
       }
     };
     
