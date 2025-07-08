@@ -20,7 +20,7 @@ export class UIController {
       transcriptionBtnText: document.getElementById('transcriptionBtnText'),
       transcriptionStatus: document.getElementById('transcriptionStatus'),
       transcriptionStatusDot: document.getElementById('transcriptionStatusDot'),
-      transcriptionContainer: document.getElementById('transcriptionContainer'),
+      transcriptionOnlyContainer: document.getElementById('transcriptionOnlyContainer'),
       transcriptionEmpty: document.getElementById('transcriptionEmpty'),
       transcriptionTextWrapper: document.getElementById('transcriptionTextWrapper'),
       transcriptionText: document.getElementById('transcriptionText'),
@@ -418,7 +418,7 @@ export class UIController {
    */
   setChatMode(isChatMode) {
     const chatContainer = this.elements.chatContainer;
-    const transcriptionOnly = this.elements.transcriptionContainer;
+    const transcriptionOnly = this.elements.transcriptionOnlyContainer;
     
     if (isChatMode) {
       // Show chat interface
