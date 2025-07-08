@@ -1,20 +1,176 @@
 /**
- * Main application entry point with dependency injection
+ * Main application entry point - Live Transcription Only
  */
 
 // Import all modules
 import { EventBus } from './core/EventBus.js';
 import { State } from './core/State.js';
-import { Config } from './core/Config.js';
 import { ErrorHandler } from './core/ErrorHandler.js';
 import { ConsoleFilter } from './utils/ConsoleFilter.js';
-import { AudioRecorder } from './services/AudioRecorder.js';
-import { RecordingService } from './services/RecordingService.js';
 import { TranscriptionWorker } from './services/TranscriptionWorker.js';
 import { SimpleVAD } from './services/SimpleVAD.js';
 import { SimpleTranscriptionManager } from './services/SimpleTranscriptionManager.js';
 import { UIController } from './components/UIController.js';
-import { RecordingManager } from './components/RecordingManager.js';
+
+/**
+ * TranscriptionApp - Main application class for transcription
+ */
+class TranscriptionApp {
+  constructor() {
+    // Core instances
+    this.eventBus = new EventBus();
+    this.state = new State({
+      transcription: {
+        isActive: false,
+        text: '',
+        isSpeaking: false
+      }
+    });
+    this.errorHandler = new ErrorHandler(this.eventBus);
+    
+    // UI controller
+    this.ui = new UIController();
+    
+    // Transcription components
+    this.transcriptionWorker = new TranscriptionWorker();
+    this.vadManager = new SimpleVAD();
+    this.transcriptionManager = new SimpleTranscriptionManager({
+      worker: this.transcriptionWorker,
+      vad: this.vadManager,
+      eventBus: this.eventBus
+    });
+    
+    // Bind methods
+    this.startTranscription = this.startTranscription.bind(this);
+    this.stopTranscription = this.stopTranscription.bind(this);
+    this.clearTranscription = this.clearTranscription.bind(this);
+  }
+
+  /**
+   * Initialize the application
+   */
+  async initialize() {
+    console.log('Initializing transcription app...');
+    
+    // Set up event listeners
+    this.setupEventListeners();
+    
+    // Set up transcription event handlers
+    this.setupTranscriptionHandlers();
+    
+    // Initialize UI
+    this.ui.clearTranscription();
+    
+    console.log('Transcription app initialized');
+  }
+
+  /**
+   * Set up event listeners
+   */
+  setupEventListeners() {
+    // Transcription button
+    const transcriptionBtn = this.ui.elements.startTranscriptionBtn;
+    if (transcriptionBtn) {
+      transcriptionBtn.addEventListener('click', () => {
+        const isActive = this.state.get('transcription.isActive');
+        if (isActive) {
+          this.stopTranscription();
+        } else {
+          this.startTranscription();
+        }
+      });
+    }
+    
+    // Clear button
+    const clearBtn = this.ui.elements.clearTranscriptionBtn;
+    if (clearBtn) {
+      clearBtn.addEventListener('click', this.clearTranscription);
+    }
+  }
+
+  /**
+   * Set up transcription event handlers
+   */
+  setupTranscriptionHandlers() {
+    // Transcription started
+    this.eventBus.on('transcription:started', () => {
+      this.state.set('transcription.isActive', true);
+      this.ui.updateTranscriptionButton('active');
+    });
+    
+    // Transcription stopped
+    this.eventBus.on('transcription:stopped', () => {
+      this.state.set('transcription.isActive', false);
+      this.state.set('transcription.isSpeaking', false);
+      this.ui.updateTranscriptionButton('idle');
+      this.ui.updateTranscriptionStatus('Ready to transcribe', false, false);
+    });
+    
+    // Status updates
+    this.eventBus.on('transcription:status', (data) => {
+      const isActive = this.state.get('transcription.isActive');
+      const isSpeaking = data.type === 'speaking';
+      
+      this.state.set('transcription.isSpeaking', isSpeaking);
+      this.ui.updateTranscriptionStatus(data.message, isActive, isSpeaking);
+    });
+    
+    // Transcription received
+    this.eventBus.on('transcription:transcription', (data) => {
+      if (data.text && data.text.trim()) {
+        this.ui.appendTranscription(data.text.trim());
+      }
+    });
+    
+    // Errors
+    this.eventBus.on('transcription:error', (data) => {
+      console.error('Transcription error:', data);
+      this.ui.showError(data.message || 'Transcription error occurred');
+      this.ui.updateTranscriptionButton('idle');
+    });
+  }
+
+  /**
+   * Start transcription
+   */
+  async startTranscription() {
+    try {
+      this.ui.updateTranscriptionButton('loading');
+      await this.transcriptionManager.start();
+    } catch (error) {
+      console.error('Failed to start transcription:', error);
+      this.ui.showError('Failed to start transcription. Please check microphone permissions.');
+      this.ui.updateTranscriptionButton('idle');
+    }
+  }
+
+  /**
+   * Stop transcription
+   */
+  async stopTranscription() {
+    try {
+      await this.transcriptionManager.stop();
+    } catch (error) {
+      console.error('Failed to stop transcription:', error);
+      this.ui.showError('Failed to stop transcription');
+    }
+  }
+
+  /**
+   * Clear transcription
+   */
+  clearTranscription() {
+    this.ui.clearTranscription();
+    this.state.set('transcription.text', '');
+  }
+
+  /**
+   * Destroy the application
+   */
+  async destroy() {
+    await this.transcriptionManager.destroy();
+  }
+}
 
 /**
  * Initialize the application
@@ -28,73 +184,28 @@ async function initializeApp() {
       autoStart: true
     });
     
-    // Create core instances
-    const eventBus = new EventBus();
-    const state = new State({
-      recording: {
-        isActive: false,
-        duration: 0,
-        startTime: null
-      },
-      transcription: {
-        isActive: false,
-        text: '',
-        isSpeaking: false
-      },
-      audio: {
-        constraints: Config.audio.constraints
-      }
-    });
-    const errorHandler = new ErrorHandler(eventBus);
-    
-    // Create UI controller
-    const ui = new UIController();
-    
-    // Create services
-    const recorder = new AudioRecorder(Config.audio.recording);
-    const service = new RecordingService(Config.api);
-    
-    // Create transcription components
-    const transcriptionWorker = new TranscriptionWorker();
-    const vadManager = new SimpleVAD();  // Use simplified VAD
-    const transcriptionManager = new SimpleTranscriptionManager({
-      worker: transcriptionWorker,
-      vad: vadManager,
-      eventBus
-    });
-    
-    // Create main manager
-    const recordingManager = new RecordingManager({
-      recorder,
-      service,
-      ui,
-      transcription: transcriptionManager,
-      state,
-      eventBus,
-      errorHandler
-    });
-    
-    // Initialize the application
-    await recordingManager.initialize();
+    // Create and initialize app
+    const app = new TranscriptionApp();
+    await app.initialize();
     
     // Make app instance available globally for debugging
     window.app = {
-      manager: recordingManager,
-      state,
-      eventBus,
-      config: Config,
+      instance: app,
+      state: app.state,
+      eventBus: app.eventBus,
       
       // Debug helpers
       debug: {
-        getState: () => state.get(),
-        getRecorderState: () => recorder.getState(),
-        getTranscriptionStatus: () => transcriptionManager.getStatus(),
+        getState: () => app.state.get(),
+        getTranscriptionStatus: () => app.transcriptionManager.getStatus?.() || {
+          isActive: app.state.get('transcription.isActive'),
+          isSpeaking: app.state.get('transcription.isSpeaking')
+        },
         
         // Manual controls
-        startRecording: () => recordingManager.startRecording(),
-        stopRecording: () => recordingManager.stopRecording(),
-        startTranscription: () => recordingManager.startTranscription(),
-        stopTranscription: () => recordingManager.stopTranscription()
+        startTranscription: () => app.startTranscription(),
+        stopTranscription: () => app.stopTranscription(),
+        clearTranscription: () => app.clearTranscription()
       }
     };
     
@@ -102,7 +213,7 @@ async function initializeApp() {
     
     // Handle page unload
     window.addEventListener('beforeunload', () => {
-      recordingManager.destroy();
+      app.destroy();
       consoleFilter.stop();
     });
     

@@ -1,5 +1,5 @@
 /**
- * UIController - Centralizes all DOM manipulation
+ * UIController - Centralizes all DOM manipulation for transcription
  */
 export class UIController {
   constructor() {
@@ -14,20 +14,6 @@ export class UIController {
    */
   initializeElements() {
     this.elements = {
-      // Recording controls
-      recordButton: document.getElementById('recordButton'),
-      recordIcon: document.getElementById('recordIcon'),
-      recordingRing: document.getElementById('recordingRing'),
-      recordingTime: document.getElementById('recordingTime'),
-      recordingStatus: document.getElementById('recordingStatus'),
-      recordingIndicator: document.getElementById('recordingIndicator'),
-      
-      // Recordings list
-      recordingsList: document.getElementById('recordingsList'),
-      recordingsCount: document.getElementById('recordingsCount'),
-      recordingsLoading: document.getElementById('recordingsLoading'),
-      recordingsEmpty: document.getElementById('recordingsEmpty'),
-      
       // Transcription elements
       startTranscriptionBtn: document.getElementById('startTranscriptionBtn'),
       transcriptionIcon: document.getElementById('transcriptionIcon'),
@@ -40,6 +26,7 @@ export class UIController {
       transcriptionText: document.getElementById('transcriptionText'),
       transcriptionCursor: document.getElementById('transcriptionCursor'),
       speakingIndicator: document.getElementById('speakingIndicator'),
+      clearTranscriptionBtn: document.getElementById('clearTranscriptionBtn'),
       
       // Toast container
       toastContainer: document.getElementById('toastContainer')
@@ -51,91 +38,6 @@ export class UIController {
    */
   initializeTemplates() {
     this.templates = {
-      recording: (data) => {
-        const div = document.createElement('div');
-        div.className = 'recording-item bg-gray-800/50 p-5 rounded-xl border border-gray-700/50 hover:border-gray-600 transition-all duration-300 group';
-        div.dataset.filename = data.filename;
-        
-        const header = document.createElement('div');
-        header.className = 'flex justify-between items-start mb-3';
-        
-        const titleSection = document.createElement('div');
-        titleSection.className = 'flex-1';
-        
-        const title = document.createElement('h3');
-        title.className = 'text-base font-semibold text-gray-200 truncate pr-2';
-        title.textContent = data.filename.replace(/^recording_/, '').replace(/\.webm$/, '');
-        title.title = data.filename;
-        
-        const info = document.createElement('div');
-        info.className = 'flex gap-3 text-xs text-gray-500 mt-1';
-        
-        const dateSpan = document.createElement('span');
-        dateSpan.className = 'flex items-center gap-1';
-        dateSpan.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>`;
-        const dateText = document.createElement('span');
-        dateText.textContent = new Date(data.timestamp).toLocaleString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-        dateSpan.appendChild(dateText);
-        
-        info.appendChild(dateSpan);
-        
-        if (data.duration) {
-          const durationSpan = document.createElement('span');
-          durationSpan.className = 'flex items-center gap-1';
-          durationSpan.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 5.25v13.5m-7.5-13.5v13.5"></path>
-          </svg>`;
-          const durationText = document.createElement('span');
-          durationText.textContent = this.formatDuration(data.duration);
-          durationSpan.appendChild(durationText);
-          info.appendChild(durationSpan);
-        }
-        
-        titleSection.appendChild(title);
-        titleSection.appendChild(info);
-        
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 opacity-0 group-hover:opacity-100';
-        deleteBtn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-        </svg>`;
-        deleteBtn.title = 'Delete recording';
-        deleteBtn.setAttribute('aria-label', 'Delete recording');
-        
-        header.appendChild(titleSection);
-        header.appendChild(deleteBtn);
-        
-        const audio = document.createElement('audio');
-        audio.className = 'w-full mt-3 h-10';
-        audio.controls = true;
-        audio.src = `/recording/${data.filename}`;
-        audio.preload = 'metadata';
-        
-        div.appendChild(header);
-        div.appendChild(audio);
-        
-        return div;
-      },
-      
-      loadingSpinner: () => {
-        const spinner = document.createElement('div');
-        spinner.className = 'fixed inset-0 bg-gray-950/80 backdrop-blur-sm flex items-center justify-center z-50';
-        spinner.innerHTML = `
-          <div class="bg-gray-900 p-6 rounded-xl shadow-2xl border border-gray-800">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <p class="mt-4 text-gray-300">Processing...</p>
-          </div>
-        `;
-        return spinner;
-      },
-      
       toast: (message, type = 'error') => {
         const toast = document.createElement('div');
         const bgColors = {
@@ -166,153 +68,6 @@ export class UIController {
         return toast;
       }
     };
-  }
-
-  /**
-   * Update record button state
-   * @param {string} state - 'idle', 'recording', 'stopping'
-   */
-  updateRecordButton(state) {
-    const button = this.elements.recordButton;
-    const icon = this.elements.recordIcon;
-    const ring = this.elements.recordingRing;
-    const indicator = this.elements.recordingIndicator;
-    
-    if (!button) return;
-    
-    const states = {
-      idle: {
-        buttonClass: 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700',
-        iconPath: 'M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z',
-        disabled: false,
-        showIndicator: false,
-        animate: false
-      },
-      recording: {
-        buttonClass: 'bg-gradient-to-br from-red-600 to-red-700 hover:from-red-700 hover:to-red-800',
-        iconPath: 'M6 6h12v12H6z',
-        disabled: false,
-        showIndicator: true,
-        animate: true
-      },
-      stopping: {
-        buttonClass: 'bg-gradient-to-br from-gray-600 to-gray-700 cursor-not-allowed',
-        iconPath: 'M6 6h12v12H6z',
-        disabled: true,
-        showIndicator: false,
-        animate: false
-      }
-    };
-    
-    const config = states[state] || states.idle;
-    
-    // Update button
-    button.className = `group relative w-32 h-32 md:w-40 md:h-40 rounded-full ${config.buttonClass} transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-500/50`;
-    button.disabled = config.disabled;
-    
-    // Update icon
-    if (icon) {
-      const path = icon.querySelector('path');
-      if (path) {
-        path.setAttribute('d', config.iconPath);
-      }
-    }
-    
-    // Update recording animation
-    if (ring) {
-      if (config.animate) {
-        ring.classList.add('recording-pulse');
-        ring.classList.remove('opacity-0');
-      } else {
-        ring.classList.remove('recording-pulse');
-        ring.classList.add('opacity-0');
-      }
-    }
-    
-    // Update indicator
-    if (indicator) {
-      if (config.showIndicator) {
-        indicator.classList.remove('hidden');
-      } else {
-        indicator.classList.add('hidden');
-      }
-    }
-  }
-
-  /**
-   * Update recording timer
-   * @param {number} milliseconds - Elapsed time
-   */
-  updateTimer(milliseconds) {
-    const element = this.elements.recordingTime;
-    if (!element) return;
-    
-    element.textContent = this.formatTime(milliseconds);
-  }
-
-  /**
-   * Update recording status
-   * @param {string} status - Status message
-   * @param {string} type - 'info', 'success', 'error'
-   */
-  updateRecordingStatus(status, type = 'info') {
-    const element = this.elements.recordingStatus;
-    if (!element) return;
-    
-    const typeClasses = {
-      info: 'text-gray-600',
-      success: 'text-green-600',
-      error: 'text-red-600'
-    };
-    
-    element.textContent = status;
-    element.className = `text-sm mt-2 ${typeClasses[type] || typeClasses.info}`;
-  }
-
-  /**
-   * Add recording to list
-   * @param {Object} recording - Recording data
-   */
-  addRecording(recording) {
-    const list = this.elements.recordingsList;
-    const loadingEl = this.elements.recordingsLoading;
-    const emptyEl = this.elements.recordingsEmpty;
-    
-    if (!list) return;
-    
-    // Hide loading and empty states
-    if (loadingEl) loadingEl.classList.add('hidden');
-    if (emptyEl) emptyEl.classList.add('hidden');
-    
-    const element = this.templates.recording(recording);
-    list.insertBefore(element, list.firstChild);
-    
-    // Animate in
-    element.style.opacity = '0';
-    element.style.transform = 'translateY(-20px)';
-    requestAnimationFrame(() => {
-      element.style.transition = 'all 0.3s ease-out';
-      element.style.opacity = '1';
-      element.style.transform = 'translateY(0)';
-    });
-    
-    this.updateRecordingsCount();
-  }
-
-  /**
-   * Remove recording from list
-   * @param {string} filename - Recording filename
-   */
-  removeRecording(filename) {
-    const element = document.querySelector(`[data-filename="${filename}"]`);
-    if (!element) return;
-    
-    // Animate out
-    element.style.transition = 'all 0.3s ease-out';
-    element.style.opacity = '0';
-    element.style.transform = 'translateX(-100%)';
-    
-    setTimeout(() => element.remove(), 300);
   }
 
   /**
@@ -445,6 +200,7 @@ export class UIController {
     const emptyEl = this.elements.transcriptionEmpty;
     const wrapperEl = this.elements.transcriptionTextWrapper;
     const cursorEl = this.elements.transcriptionCursor;
+    const clearBtn = this.elements.clearTranscriptionBtn;
     
     if (!textEl || !text.trim()) return;
     
@@ -452,6 +208,7 @@ export class UIController {
     if (emptyEl) emptyEl.classList.add('hidden');
     if (wrapperEl) wrapperEl.classList.remove('hidden');
     if (cursorEl) cursorEl.classList.remove('hidden');
+    if (clearBtn) clearBtn.style.display = 'block';
     
     // Append text
     textEl.textContent += text + ' ';
@@ -471,31 +228,13 @@ export class UIController {
     const emptyEl = this.elements.transcriptionEmpty;
     const wrapperEl = this.elements.transcriptionTextWrapper;
     const cursorEl = this.elements.transcriptionCursor;
+    const clearBtn = this.elements.clearTranscriptionBtn;
     
     if (textEl) textEl.textContent = '';
     if (emptyEl) emptyEl.classList.remove('hidden');
     if (wrapperEl) wrapperEl.classList.add('hidden');
     if (cursorEl) cursorEl.classList.add('hidden');
-  }
-
-  /**
-   * Show loading spinner
-   * @returns {HTMLElement} Spinner element
-   */
-  showLoading() {
-    const spinner = this.templates.loadingSpinner();
-    document.body.appendChild(spinner);
-    return spinner;
-  }
-
-  /**
-   * Hide loading spinner
-   * @param {HTMLElement} spinner - Spinner to hide
-   */
-  hideLoading(spinner) {
-    if (spinner && spinner.parentNode) {
-      spinner.remove();
-    }
+    if (clearBtn) clearBtn.style.display = 'none';
   }
 
   /**
@@ -544,30 +283,6 @@ export class UIController {
   }
 
   /**
-   * Format time from milliseconds
-   * @param {number} ms - Milliseconds
-   * @returns {string} Formatted time
-   */
-  formatTime(ms) {
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    
-    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-  }
-
-  /**
-   * Format duration
-   * @param {number} seconds - Duration in seconds
-   * @returns {string} Formatted duration
-   */
-  formatDuration(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }
-
-  /**
    * Enable/disable an element
    * @param {string} elementKey - Element key
    * @param {boolean} enabled - Enable state
@@ -593,60 +308,6 @@ export class UIController {
     const element = this.elements[elementKey];
     if (element) {
       element.style.display = visible ? '' : 'none';
-    }
-  }
-  
-  /**
-   * Update recordings count
-   */
-  updateRecordingsCount() {
-    const countEl = this.elements.recordingsCount;
-    const list = this.elements.recordingsList;
-    const emptyEl = this.elements.recordingsEmpty;
-    
-    if (countEl && list) {
-      const count = list.querySelectorAll('.recording-item').length;
-      countEl.textContent = count > 0 ? `(${count})` : '';
-      
-      if (count === 0 && emptyEl) {
-        emptyEl.classList.remove('hidden');
-      }
-    }
-  }
-  
-  /**
-   * Initialize recordings list
-   */
-  initializeRecordingsList() {
-    const loadingEl = this.elements.recordingsLoading;
-    const emptyEl = this.elements.recordingsEmpty;
-    const list = this.elements.recordingsList;
-    
-    if (loadingEl) loadingEl.classList.remove('hidden');
-    if (emptyEl) emptyEl.classList.add('hidden');
-    
-    // Clear existing recordings except loading/empty states
-    if (list) {
-      const recordings = list.querySelectorAll('.recording-item');
-      recordings.forEach(el => el.remove());
-    }
-  }
-  
-  /**
-   * Finish loading recordings
-   */
-  finishLoadingRecordings() {
-    const loadingEl = this.elements.recordingsLoading;
-    const emptyEl = this.elements.recordingsEmpty;
-    const list = this.elements.recordingsList;
-    
-    if (loadingEl) loadingEl.classList.add('hidden');
-    
-    if (list) {
-      const count = list.querySelectorAll('.recording-item').length;
-      if (count === 0 && emptyEl) {
-        emptyEl.classList.remove('hidden');
-      }
     }
   }
 }
