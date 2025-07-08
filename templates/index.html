@@ -7,6 +7,13 @@
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
+    <script>
+        // Configure ONNX Runtime to suppress warnings
+        if (typeof ort !== 'undefined') {
+            ort.env.logLevel = 'error';  // Only show errors, not warnings
+            ort.env.wasm.numThreads = 1;  // Use single thread for stability
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js"></script>
     <!-- Load dependencies for transcription -->
     <script type="module">

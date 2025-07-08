@@ -29,6 +29,9 @@ export class ConsoleFilter {
     this.addFilter(/The requested module.*ort.*does not provide an export/i, ['warn']);
     this.addFilter(/CoreML.*not supported/i, ['warn']);
     this.addFilter(/Falling back to.*cpu/i, ['log', 'warn']);
+    this.addFilter(/Removing initializer.*not used by any node/i, ['warn']);
+    this.addFilter(/CleanUnusedInitializersAndNodeArgs/i, ['warn']);
+    this.addFilter(/onnxruntime.*graph\.cc/i, ['warn']);
     
     // Filter Transformers.js warnings
     this.addFilter(/Using.*onnxruntime-web.*backend/i, ['log']);
