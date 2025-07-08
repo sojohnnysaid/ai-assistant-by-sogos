@@ -33,8 +33,8 @@ export class TranscriptionWorker {
         
         // Handle init message
         this.once('init', () => {
-          // Now initialize the model
-          this.send('init');
+          // Now initialize the model - send directly to worker
+          this.worker.postMessage({ type: 'init', id: this.messageId++ });
         });
         
         // Wait for ready signal
