@@ -139,6 +139,15 @@ export class TranscriptionManager {
       try {
         this.emit('status', { type: 'processing', message: 'Transcribing speech...' });
         
+        // Log audio data info
+        console.log('[TranscriptionManager] Sending audio to worker:', {
+          type: audioData.constructor.name,
+          length: audioData.length,
+          sampleRate: 16000,
+          duration: `${(audioData.length / 16000).toFixed(2)}s`,
+          range: `${Math.min(...audioData.slice(0, 100)).toFixed(4)} to ${Math.max(...audioData.slice(0, 100)).toFixed(4)}`
+        });
+        
         // Send to worker for transcription
         const result = await this.worker.transcribe(audioData);
         
@@ -148,6 +157,8 @@ export class TranscriptionManager {
             timestamp: Date.now(),
             confidence: result.confidence
           });
+        } else {
+          console.log('[TranscriptionManager] No transcription text returned');
         }
         
         this.emit('status', { type: 'ready', message: 'Listening...' });

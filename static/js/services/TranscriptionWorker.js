@@ -2,7 +2,7 @@
  * TranscriptionWorker - Manages Web Worker for Whisper transcription
  */
 export class TranscriptionWorker {
-  constructor(workerPath = '/static/js/workers/whisper-worker-simple.js') {
+  constructor(workerPath = '/static/js/workers/whisper-worker-debug.js') {
     this.workerPath = workerPath;
     this.worker = null;
     this.isReady = false;
@@ -61,7 +61,7 @@ export class TranscriptionWorker {
       await this.initialize();
     }
     
-    return this.sendAndWait('transcribe', { 
+    return this.sendAndWait('transcribe', {
       audio: audioData,
       options: {
         return_timestamps: false,
@@ -116,13 +116,14 @@ export class TranscriptionWorker {
         this.messageQueue.push(message);
       }
       
-      // Timeout after 30 seconds
+      // Timeout after 60 seconds for model loading
+      const timeoutMs = type === 'init' ? 60000 : 30000;
       setTimeout(() => {
         if (this.messageHandlers.has(id)) {
           this.messageHandlers.delete(id);
-          reject(new Error('Worker response timeout'));
+          reject(new Error(`Worker response timeout for ${type} after ${timeoutMs}ms`));
         }
-      }, 30000);
+      }, timeoutMs);
     });
   }
 

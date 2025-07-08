@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Audio Flow</title>
+    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js"></script>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .log { margin: 5px 0; padding: 5px; background: #f0f0f0; }
+        .error { color: red; }
+        .success { color: green; }
+        button { margin: 10px; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Audio Flow Debug</h1>
+    <button id="testVAD">Test VAD</button>
+    <button id="testWhisper">Test Whisper</button>
+    <button id="testIntegration">Test Full Integration</button>
+    <div id="logs"></div>
+
+    <script type="module">
+        const logs = document.getElementById('logs');
+        
+        function log(message, type = '') {
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logs.appendChild(div);
+            console.log(message);
+        }
+
+        // Test VAD
+        document.getElementById('testVAD').addEventListener('click', async () => {
+            log('Testing VAD...');
+            try {
+                const myvad = await vad.MicVAD.new({
+                    onSpeechStart: () => {
+                        log('VAD: Speech started', 'success');
+                    },
+                    onSpeechEnd: (audio) => {
+                        log(`VAD: Speech ended - Audio type: ${audio.constructor.name}, Length: ${audio.length}, Sample rate: 16000`, 'success');
+                        // Check audio values
+                        const max = Math.max(...audio.slice(0, 100));
+                        const min = Math.min(...audio.slice(0, 100));
+                        log(`VAD: Audio range: ${min.toFixed(4)} to ${max.toFixed(4)}`);
+                    }
+                });
+                
+                await myvad.start();
+                log('VAD started - speak into microphone', 'success');
+                
+                setTimeout(() => {
+                    myvad.pause();
+                    log('VAD stopped');
+                }, 10000);
+                
+            } catch (error) {
+                log(`VAD Error: ${error.message}`, 'error');
+            }
+        });
+
+        // Test Whisper
+        document.getElementById('testWhisper').addEventListener('click', async () => {
+            log('Testing Whisper...');
+            try {
+                // Create a test audio signal (1 second of sine wave)
+                const sampleRate = 16000;
+                const duration = 1;
+                const frequency = 440; // A4 note
+                const samples = sampleRate * duration;
+                const audioData = new Float32Array(samples);
+                
+                for (let i = 0; i < samples; i++) {
+                    audioData[i] = Math.sin(2 * Math.PI * frequency * i / sampleRate) * 0.3;
+                }
+                
+                log(`Created test audio: ${audioData.length} samples`);
+                
+                // Test whisper
+                const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0');
+                env.allowLocalModels = false;
+                
+                log('Loading Whisper model...');
+                const transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
+                log('Model loaded', 'success');
+                
+                log('Transcribing test audio...');
+                const result = await transcriber(audioData);
+                log(`Transcription result: "${result.text}"`, 'success');
+                
+            } catch (error) {
+                log(`Whisper Error: ${error.message}`, 'error');
+                console.error(error);
+            }
+        });
+
+        // Test full integration
+        document.getElementById('testIntegration').addEventListener('click', async () => {
+            log('Testing full integration...');
+            try {
+                // Load Whisper first
+                const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0');
+                env.allowLocalModels = false;
+                
+                log('Loading Whisper model...');
+                const transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
+                log('Model loaded', 'success');
+                
+                // Set up VAD
+                const myvad = await vad.MicVAD.new({
+                    onSpeechStart: () => {
+                        log('Speech detected!', 'success');
+                    },
+                    onSpeechEnd: async (audio) => {
+                        log(`Received audio: ${audio.length} samples`);
+                        
+                        try {
+                            log('Transcribing speech...');
+                            const result = await transcriber(audio);
+                            log(`Transcription: "${result.text}"`, 'success');
+                        } catch (error) {
+                            log(`Transcription error: ${error.message}`, 'error');
+                        }
+                    }
+                });
+                
+                await myvad.start();
+                log('VAD started - speak to test transcription', 'success');
+                
+                setTimeout(() => {
+                    myvad.pause();
+                    log('Test completed');
+                }, 20000);
+                
+            } catch (error) {
+                log(`Integration Error: ${error.message}`, 'error');
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>

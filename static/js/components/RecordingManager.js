@@ -250,6 +250,7 @@ export class RecordingManager {
     } catch (error) {
       this.state.set('transcription.isActive', false);
       this.ui.updateTranscriptionButton('idle');
+      this.ui.updateTranscriptionStatus('Failed to start transcription', false, false);
       this.handleError(error, 'Failed to start transcription');
     }
   }
