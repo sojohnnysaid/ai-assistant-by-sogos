@@ -90,21 +90,25 @@ def chat():
             parts=[types.Part.from_text(text=user_message)]
         ))
         
-        # Generate AI response
-        generate_config = types.GenerateContentConfig(
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
-            response_mime_type="text/plain",
-        )
-        
-        # Collect the full response
-        ai_response = ""
-        for chunk in gemini_client.models.generate_content_stream(
-            model=GEMINI_MODEL,
-            contents=contents,
-            config=generate_config,
-        ):
-            if chunk.text:
-                ai_response += chunk.text
+        # Generate AI response or use fallback
+        if gemini_client:
+            generate_config = types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+                response_mime_type="text/plain",
+            )
+            
+            # Collect the full response
+            ai_response = ""
+            for chunk in gemini_client.models.generate_content_stream(
+                model=GEMINI_MODEL,
+                contents=contents,
+                config=generate_config,
+            ):
+                if chunk.text:
+                    ai_response += chunk.text
+        else:
+            # Fallback response when Gemini is not configured
+            ai_response = f"I heard you say: '{user_message}'. However, the AI service is not configured. Please set the GEMINI_API_KEY environment variable."
         
         return jsonify({
             'response': ai_response,
@@ -192,54 +196,62 @@ def chat_with_voice():
             parts=[types.Part.from_text(text=user_message)]
         ))
         
-        # Generate AI response
-        generate_config = types.GenerateContentConfig(
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
-            response_mime_type="text/plain",
-        )
+        # Generate AI response or use fallback
+        if gemini_client:
+            generate_config = types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+                response_mime_type="text/plain",
+            )
+            
+            # Collect the full response
+            ai_response = ""
+            for chunk in gemini_client.models.generate_content_stream(
+                model=GEMINI_MODEL,
+                contents=contents,
+                config=generate_config,
+            ):
+                if chunk.text:
+                    ai_response += chunk.text
+        else:
+            # Fallback response when Gemini is not configured
+            ai_response = f"I heard you say: '{user_message}'. However, the AI service is not configured. Please set the GEMINI_API_KEY environment variable."
         
-        # Collect the full response
-        ai_response = ""
-        for chunk in gemini_client.models.generate_content_stream(
-            model=GEMINI_MODEL,
-            contents=contents,
-            config=generate_config,
-        ):
-            if chunk.text:
-                ai_response += chunk.text
-        
-        # Convert to speech
-        audio_response = elevenlabs.text_to_speech.stream(
-            voice_id=VOICE_ID,
-            output_format="mp3_22050_32",
-            text=ai_response,
-            model_id=VOICE_MODEL,
-            voice_settings=VoiceSettings(
-                stability=0.5,
-                similarity_boost=0.8,
-                style=0.0,
-                use_speaker_boost=True,
-                speed=1.0,
-            ),
-        )
-        
-        # Collect audio data
-        audio_stream = BytesIO()
-        for chunk in audio_response:
-            if chunk:
-                audio_stream.write(chunk)
-        
-        audio_stream.seek(0)
-        audio_data = audio_stream.read()
-        
-        # Convert audio to base64 for JSON response
-        import base64
-        audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+        # Convert to speech or skip if not configured
+        if elevenlabs:
+            audio_response = elevenlabs.text_to_speech.stream(
+                voice_id=VOICE_ID,
+                output_format="mp3_22050_32",
+                text=ai_response,
+                model_id=VOICE_MODEL,
+                voice_settings=VoiceSettings(
+                    stability=0.5,
+                    similarity_boost=0.8,
+                    style=0.0,
+                    use_speaker_boost=True,
+                    speed=1.0,
+                ),
+            )
+            
+            # Collect audio data
+            audio_stream = BytesIO()
+            for chunk in audio_response:
+                if chunk:
+                    audio_stream.write(chunk)
+            
+            audio_stream.seek(0)
+            audio_data = audio_stream.read()
+            
+            # Convert audio to base64 for JSON response
+            import base64
+            audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+        else:
+            # No audio when ElevenLabs is not configured
+            audio_base64 = None
         
         return jsonify({
             'response': ai_response,
             'audio': audio_base64,
-            'audio_format': 'mp3',
+            'audio_format': 'mp3' if audio_base64 else None,
             'success': True
         })
         

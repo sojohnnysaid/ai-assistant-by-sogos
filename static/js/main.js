@@ -176,9 +176,14 @@ class VoiceChatApp {
       // Add AI message to chat
       this.ui.addChatMessage(response.text, 'assistant');
       
-      // Play AI voice response
+      // Play AI voice response if available
       if (response.audio) {
-        await this.ui.playAudio(response.audio, response.audioFormat);
+        try {
+          await this.ui.playAudio(response.audio, response.audioFormat);
+        } catch (audioError) {
+          console.warn('Could not play audio:', audioError);
+          // Continue without audio - text is already shown
+        }
       }
       
     } catch (error) {
