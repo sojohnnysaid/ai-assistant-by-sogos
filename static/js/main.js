@@ -11,8 +11,8 @@ import { ConsoleFilter } from './utils/ConsoleFilter.js';
 import { AudioRecorder } from './services/AudioRecorder.js';
 import { RecordingService } from './services/RecordingService.js';
 import { TranscriptionWorker } from './services/TranscriptionWorker.js';
-import { VADManager } from './services/VADManager.js';
-import { TranscriptionManager } from './services/TranscriptionManager.js';
+import { SimpleVAD } from './services/SimpleVAD.js';
+import { SimpleTranscriptionManager } from './services/SimpleTranscriptionManager.js';
 import { UIController } from './components/UIController.js';
 import { RecordingManager } from './components/RecordingManager.js';
 
@@ -56,12 +56,11 @@ async function initializeApp() {
     
     // Create transcription components
     const transcriptionWorker = new TranscriptionWorker();
-    const vadManager = new VADManager(Config.vad);
-    const transcriptionManager = new TranscriptionManager({
+    const vadManager = new SimpleVAD();  // Use simplified VAD
+    const transcriptionManager = new SimpleTranscriptionManager({
       worker: transcriptionWorker,
       vad: vadManager,
-      eventBus,
-      errorHandler
+      eventBus
     });
     
     // Create main manager

@@ -397,12 +397,15 @@ export class UIController {
     
     if (dotEl) {
       if (isSpeaking) {
+        // Blue pulsing dot when speaking
         dotEl.classList.remove('bg-gray-600', 'bg-green-500');
         dotEl.classList.add('bg-blue-500', 'animate-pulse');
       } else if (isListening) {
+        // Green pulsing dot when listening
         dotEl.classList.remove('bg-gray-600', 'bg-blue-500');
         dotEl.classList.add('bg-green-500', 'animate-pulse');
       } else {
+        // Gray static dot when idle
         dotEl.classList.remove('bg-green-500', 'bg-blue-500', 'animate-pulse');
         dotEl.classList.add('bg-gray-600');
       }
@@ -410,9 +413,25 @@ export class UIController {
     
     if (speakingEl) {
       if (isSpeaking) {
+        // Show speaking indicator with animation
         speakingEl.classList.remove('hidden');
+        speakingEl.classList.add('animate-fade-in');
       } else {
+        // Hide speaking indicator
         speakingEl.classList.add('hidden');
+        speakingEl.classList.remove('animate-fade-in');
+      }
+    }
+    
+    // Also update the transcription container border when speaking
+    const container = this.elements.transcriptionContainer;
+    if (container) {
+      if (isSpeaking) {
+        container.classList.add('border-blue-500', 'border-2');
+        container.classList.remove('border-gray-700/50', 'border');
+      } else {
+        container.classList.remove('border-blue-500', 'border-2');
+        container.classList.add('border-gray-700/50', 'border');
       }
     }
   }

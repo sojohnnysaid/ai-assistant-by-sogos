@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple VAD Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 40px;
+            background: #1a1a1a;
+            color: white;
+        }
+        #status {
+            margin: 20px 0;
+            padding: 20px;
+            background: #333;
+            border-radius: 8px;
+            font-size: 18px;
+        }
+        #status.speaking {
+            background: #2563eb;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        #log {
+            margin-top: 20px;
+            padding: 10px;
+            background: #222;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple VAD Test</h1>
+    <button id="startBtn">Start VAD</button>
+    <button id="stopBtn" disabled>Stop VAD</button>
+    
+    <div id="status">Click "Start VAD" and speak into your microphone</div>
+    <div id="log"></div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        let myvad = null;
+
+        function log(message) {
+            const time = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${time}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        async function startVAD() {
+            try {
+                log('Creating VAD instance...');
+                
+                myvad = await vad.MicVAD.new({
+                    onSpeechStart: () => {
+                        log('🎤 Speech start detected');
+                        statusDiv.textContent = '🎤 SPEAKING...';
+                        statusDiv.classList.add('speaking');
+                    },
+                    
+                    onSpeechEnd: (audio) => {
+                        log(`🔇 Speech end detected - Audio: ${audio.length} samples (${(audio.length/16000).toFixed(2)}s)`);
+                        statusDiv.textContent = '👂 Listening...';
+                        statusDiv.classList.remove('speaking');
+                        
+                        // Check audio values
+                        const max = Math.max(...audio.slice(0, 1000));
+                        const min = Math.min(...audio.slice(0, 1000));
+                        log(`Audio range: ${min.toFixed(4)} to ${max.toFixed(4)}`);
+                    },
+                    
+                    onVADMisfire: () => {
+                        log('⚠️ VAD misfire');
+                    }
+                });
+                
+                log('Starting VAD...');
+                await myvad.start();
+                
+                log('✅ VAD started successfully!');
+                statusDiv.textContent = '👂 Listening...';
+                
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                
+            } catch (error) {
+                log('❌ Error: ' + error.message);
+                console.error(error);
+            }
+        }
+
+        async function stopVAD() {
+            if (myvad) {
+                log('Stopping VAD...');
+                myvad.pause();
+                statusDiv.textContent = 'VAD stopped';
+                statusDiv.classList.remove('speaking');
+                
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                
+                log('VAD stopped');
+            }
+        }
+
+        startBtn.addEventListener('click', startVAD);
+        stopBtn.addEventListener('click', stopVAD);
+        
+        // Log initial state
+        log('Page loaded - VAD library available: ' + (typeof vad !== 'undefined'));
+    </script>
+</body>
+</html>
