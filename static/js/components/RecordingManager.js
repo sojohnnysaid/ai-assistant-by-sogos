@@ -36,6 +36,9 @@ export class RecordingManager {
       this.state.set('transcription.isActive', false);
       this.state.set('transcription.text', '');
       
+      // Ensure UI reflects initial state
+      this.ui.updateTranscriptionButton('idle');
+      
       // Set up event listeners
       this.setupEventListeners();
       
@@ -219,6 +222,7 @@ export class RecordingManager {
    */
   async handleTranscriptionClick() {
     const isActive = this.state.get('transcription.isActive');
+    console.log('Transcription button clicked, isActive:', isActive);
     
     if (!isActive) {
       await this.startTranscription();
@@ -255,12 +259,15 @@ export class RecordingManager {
    */
   async stopTranscription() {
     try {
+      console.log('Stopping transcription...');
       await this.transcription.stop();
       
       this.state.set('transcription.isActive', false);
       this.ui.updateTranscriptionButton('idle');
+      this.ui.updateTranscriptionStatus('Ready to transcribe', false, false);
       
       this.eventBus.emit('transcription:stopped');
+      console.log('Transcription stopped successfully');
       
     } catch (error) {
       this.handleError(error, 'Failed to stop transcription');
