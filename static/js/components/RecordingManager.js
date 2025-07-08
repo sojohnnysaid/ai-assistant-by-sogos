@@ -88,8 +88,9 @@ export class RecordingManager {
     });
     
     this.eventBus.on('transcription:status', (data) => {
-      const isListening = data.type === 'ready';
-      this.ui.updateTranscriptionStatus(data.message, isListening);
+      const isListening = data.type === 'ready' || data.type === 'speaking' || data.type === 'processing';
+      const isSpeaking = data.type === 'speaking';
+      this.ui.updateTranscriptionStatus(data.message, isListening, isSpeaking);
     });
     
     this.eventBus.on('transcription:error', (data) => {

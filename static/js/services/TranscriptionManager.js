@@ -31,8 +31,22 @@ export class TranscriptionManager {
     
     // Set up VAD event handlers
     if (this.vad) {
-      const unsubscribe = this.vad.on('speechend', (audioData) => {
+      // Speech start event
+      let unsubscribe = this.vad.on('speechstart', () => {
+        this.emit('status', { type: 'speaking', message: 'Listening to speech...' });
+      });
+      this.unsubscribers.push(unsubscribe);
+      
+      // Speech end event
+      unsubscribe = this.vad.on('speechend', (audioData) => {
         this.handleSpeechEnd(audioData);
+        this.emit('status', { type: 'ready', message: 'Processing...' });
+      });
+      this.unsubscribers.push(unsubscribe);
+      
+      // VAD misfire event
+      unsubscribe = this.vad.on('misfire', () => {
+        this.emit('status', { type: 'ready', message: 'Listening...' });
       });
       this.unsubscribers.push(unsubscribe);
     }
@@ -54,11 +68,12 @@ export class TranscriptionManager {
       // Start VAD
       if (this.vad) {
         await this.vad.start();
+        this.emit('vad:started');
       }
       
       this.isActive = true;
       this.emit('started');
-      this.emit('status', { type: 'ready', message: 'Listening...' });
+      this.emit('status', { type: 'ready', message: 'Listening... (Speak clearly into your microphone)' });
       
     } catch (error) {
       this.handleError(error, 'Failed to start transcription');
@@ -77,6 +92,7 @@ export class TranscriptionManager {
       // Stop VAD
       if (this.vad) {
         await this.vad.stop();
+        this.emit('vad:stopped');
       }
       
       // Clear audio queue
@@ -121,7 +137,7 @@ export class TranscriptionManager {
       const audioData = this.audioQueue.shift();
       
       try {
-        this.emit('status', { type: 'processing', message: 'Processing speech...' });
+        this.emit('status', { type: 'processing', message: 'Transcribing speech...' });
         
         // Send to worker for transcription
         const result = await this.worker.transcribe(audioData);

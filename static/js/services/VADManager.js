@@ -32,8 +32,11 @@ export class VADManager {
   async initialize() {
     if (this.vad) return;
     
-    // Dynamically import VAD
-    const { MicVAD } = await import('https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.7/dist/bundle.min.js');
+    // Use the VAD library already loaded in the page
+    if (!window.vad) {
+      throw new Error('VAD library not loaded. Please ensure @ricky0123/vad-web is loaded in the HTML.');
+    }
+    const { MicVAD } = window.vad;
     
     this.vad = await MicVAD.new({
       onSpeechStart: () => {

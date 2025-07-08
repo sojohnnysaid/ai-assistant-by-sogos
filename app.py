@@ -52,14 +52,15 @@ def list_recordings():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             recordings.append({
                 'filename': filename,
-                'url': f'/recording/{filename}',
-                'size': os.path.getsize(filepath),
-                'created': datetime.fromtimestamp(os.path.getctime(filepath)).isoformat()
+                'timestamp': datetime.fromtimestamp(os.path.getctime(filepath)).isoformat(),
+                'size': os.path.getsize(filepath)
             })
     return jsonify(recordings)
 
-@app.route('/recording/<filename>', methods=['DELETE'])
-def delete_recording(filename):
+@app.route('/delete', methods=['POST'])
+def delete_recording():
+    data = request.get_json()
+    filename = data.get('filename')
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     if os.path.exists(filepath):
         try:

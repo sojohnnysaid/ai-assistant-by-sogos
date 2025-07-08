@@ -115,7 +115,7 @@ export class UIController {
         const audio = document.createElement('audio');
         audio.className = 'w-full mt-3 h-10';
         audio.controls = true;
-        audio.src = `/recordings/${data.filename}`;
+        audio.src = `/recording/${data.filename}`;
         audio.preload = 'metadata';
         
         div.appendChild(header);
@@ -384,8 +384,9 @@ export class UIController {
    * Update transcription status
    * @param {string} status - Status message
    * @param {boolean} isListening - Listening state
+   * @param {boolean} isSpeaking - Speaking state
    */
-  updateTranscriptionStatus(status, isListening = false) {
+  updateTranscriptionStatus(status, isListening = false, isSpeaking = false) {
     const statusEl = this.elements.transcriptionStatus;
     const dotEl = this.elements.transcriptionStatusDot;
     const speakingEl = this.elements.speakingIndicator;
@@ -395,17 +396,20 @@ export class UIController {
     }
     
     if (dotEl) {
-      if (isListening) {
-        dotEl.classList.remove('bg-gray-600');
+      if (isSpeaking) {
+        dotEl.classList.remove('bg-gray-600', 'bg-green-500');
+        dotEl.classList.add('bg-blue-500', 'animate-pulse');
+      } else if (isListening) {
+        dotEl.classList.remove('bg-gray-600', 'bg-blue-500');
         dotEl.classList.add('bg-green-500', 'animate-pulse');
       } else {
-        dotEl.classList.remove('bg-green-500', 'animate-pulse');
+        dotEl.classList.remove('bg-green-500', 'bg-blue-500', 'animate-pulse');
         dotEl.classList.add('bg-gray-600');
       }
     }
     
     if (speakingEl) {
-      if (isListening && status.toLowerCase().includes('listening')) {
+      if (isSpeaking) {
         speakingEl.classList.remove('hidden');
       } else {
         speakingEl.classList.add('hidden');
