@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Transcription</title>
+    <script type="module">
+        // Test if we can load transformers
+        async function testTransformers() {
+            console.log('Testing @xenova/transformers import...');
+            try {
+                const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0');
+                console.log('✅ Successfully imported transformers');
+                
+                env.allowLocalModels = false;
+                console.log('✅ Configured environment');
+                
+                console.log('Loading model...');
+                const transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
+                console.log('✅ Model loaded successfully!');
+                
+                // Test with a simple array
+                const testAudio = new Float32Array(16000); // 1 second of silence
+                const result = await transcriber(testAudio);
+                console.log('✅ Transcription test:', result);
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+            }
+        }
+        
+        // Run test when page loads
+        window.addEventListener('load', testTransformers);
+    </script>
+</head>
+<body>
+    <h1>Transcription Test</h1>
+    <p>Check the console for results...</p>
+</body>
+</html>

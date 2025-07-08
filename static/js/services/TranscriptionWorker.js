@@ -2,7 +2,7 @@
  * TranscriptionWorker - Manages Web Worker for Whisper transcription
  */
 export class TranscriptionWorker {
-  constructor(workerPath = '/static/whisper-webworker.js') {
+  constructor(workerPath = '/static/js/workers/whisper-worker-simple.js') {
     this.workerPath = workerPath;
     this.worker = null;
     this.isReady = false;
@@ -31,15 +31,18 @@ export class TranscriptionWorker {
           reject(error);
         };
         
+        // Handle init message
+        this.once('init', () => {
+          // Now initialize the model
+          this.send('init');
+        });
+        
         // Wait for ready signal
         this.once('ready', () => {
           this.isReady = true;
           this.processQueue();
           resolve();
         });
-        
-        // Initialize the worker
-        this.send('init');
         
       } catch (error) {
         reject(error);
@@ -50,14 +53,23 @@ export class TranscriptionWorker {
   /**
    * Transcribe audio data
    * @param {Float32Array} audioData - Audio samples
+   * @param {Object} options - Transcription options
    * @returns {Promise<Object>} Transcription result
    */
-  async transcribe(audioData) {
+  async transcribe(audioData, options = {}) {
     if (!this.isReady) {
       await this.initialize();
     }
     
-    return this.sendAndWait('transcribe', { audio: audioData });
+    return this.sendAndWait('transcribe', { 
+      audio: audioData,
+      options: {
+        return_timestamps: false,
+        chunk_length_s: 30,
+        stride_length_s: 5,
+        ...options
+      }
+    });
   }
 
   /**
@@ -136,16 +148,29 @@ export class TranscriptionWorker {
     
     // Handle worker status messages
     switch (type) {
+      case 'init':
+        this.emit('init');
+        break;
+        
       case 'ready':
         this.emit('ready');
+        break;
+        
+      case 'status':
+        this.emit('status', data);
         break;
         
       case 'progress':
         this.emit('progress', data);
         break;
         
-      case 'log':
-        console.log('[Worker]', data.message);
+      case 'error':
+        console.error('[Worker Error]', data.error);
+        this.emit('error', data);
+        break;
+        
+      case 'result':
+        // This is handled by the response handler above
         break;
         
       default:

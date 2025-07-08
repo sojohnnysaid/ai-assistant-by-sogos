@@ -8,13 +8,10 @@
     <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js"></script>
-    <!-- Load transformers.js for Whisper -->
+    <!-- Load dependencies for transcription -->
     <script type="module">
-        import { env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0';
-        // Configure transformers.js
-        env.allowLocalModels = false;
-        env.remoteURL = 'https://huggingface.co/';
-        window.transformersEnv = env;
+        // The transformers library will be loaded in the web worker
+        // This ensures compatibility with the worker environment
     </script>
     <!-- Add custom animations -->
     <style>
