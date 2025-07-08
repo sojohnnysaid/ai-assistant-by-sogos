@@ -1,0 +1,15 @@
+{
+  "name": "mic-test",
+  "version": "1.0.0",
+  "description": "Low-Fi Voice Recorder",
+  "scripts": {
+    "build-css": "tailwindcss -i ./src/input.css -o ./static/styles.css --minify",
+    "watch-css": "tailwindcss -i ./src/input.css -o ./static/styles.css --watch"
+  },
+  "dependencies": {
+    "@xenova/transformers": "^2.6.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.1"
+  }
+}

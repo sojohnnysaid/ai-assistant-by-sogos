@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Low-Fi Voice Recorder</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js"></script>
+    <!-- Load transformers.js for Whisper -->
+    <script type="module">
+        import { env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0';
+        // Configure transformers.js
+        env.allowLocalModels = false;
+        env.remoteURL = 'https://huggingface.co/';
+        window.transformersEnv = env;
+    </script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-2xl">
+        <h1 class="text-3xl font-bold mb-8 text-center">Low-Fi Voice Recorder</h1>
+        
+        <div class="bg-gray-800 rounded-lg p-6 mb-6">
+            <div class="text-center mb-6">
+                <button id="recordButton" class="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-full transition-colors duration-200 text-lg">
+                    Start Recording
+                </button>
+                <div id="recordingTime" class="mt-4 text-2xl font-mono">00:00</div>
+                <div id="recordingStatus" class="mt-2 text-sm text-gray-400"></div>
+            </div>
+        </div>
+
+        <!-- Live transcription section -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">Live Transcription</h2>
+                <button id="startTranscriptionBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded transition-colors duration-200">
+                    Start Live Transcription
+                </button>
+            </div>
+            <div id="transcriptionStatus" class="text-sm text-gray-400 mb-2">Click button to start</div>
+            <div id="transcriptionContainer" class="bg-gray-700 rounded-lg p-4 min-h-[100px] max-h-[200px] overflow-y-auto">
+            <h2 class="text-xl font-semibold mb-4">Live Transcription</h2>
+            <div id="transcriptionDisplay" class="bg-gray-800 rounded-lg p-4 min-h-[100px] max-h-[200px] overflow-y-auto">
+                <p id="transcriptionText" class="text-gray-300"></p>
+            </div>
+        </div>
+
+        <div id="recordingsList" class="space-y-4">
+            <!-- Recordings will be displayed here -->
+        </div>
+    </div>
+
+    <!-- Load main application module -->
+    <script type="module" src="/static/js/main.js"></script>
+</body>
+</html>
