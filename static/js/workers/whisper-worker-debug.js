@@ -12,6 +12,13 @@ self.addEventListener('message', (event) => {
     console.log('[WhisperWorker] Received message:', event.data);
 });
 
+// Send init message when worker loads
+console.log('[WhisperWorker] Sending init message');
+self.postMessage({
+    type: 'init',
+    message: 'Worker initialized'
+});
+
 // Initialize by loading the library
 async function initialize() {
     console.log('[WhisperWorker] Initialize called, isInitialized:', isInitialized, 'isLoading:', isLoading);

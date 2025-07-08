@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Whisper Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 40px;
+            background: #1a1a1a;
+            color: white;
+        }
+        #status {
+            margin: 20px 0;
+            padding: 20px;
+            background: #333;
+            border-radius: 8px;
+            font-size: 18px;
+        }
+        #status.loading {
+            background: #2563eb;
+        }
+        #status.ready {
+            background: #10b981;
+        }
+        #status.error {
+            background: #ef4444;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+        }
+        #log {
+            margin-top: 20px;
+            padding: 10px;
+            background: #222;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Whisper Worker Test</h1>
+    <button id="initBtn">Initialize Worker</button>
+    <button id="testBtn" disabled>Test Transcription</button>
+    
+    <div id="status">Click "Initialize Worker" to start</div>
+    <div id="log"></div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+        const initBtn = document.getElementById('initBtn');
+        const testBtn = document.getElementById('testBtn');
+        let worker = null;
+
+        function log(message) {
+            const time = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${time}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(message, type = 'normal') {
+            statusDiv.textContent = message;
+            statusDiv.className = type;
+        }
+
+        async function initializeWorker() {
+            try {
+                log('Creating worker...');
+                updateStatus('Creating worker...', 'loading');
+                
+                worker = new Worker('/static/js/workers/whisper-worker-debug.js');
+                
+                worker.onmessage = (event) => {
+                    const data = event.data;
+                    log(`Worker message: ${data.type} - ${JSON.stringify(data)}`);
+                    
+                    switch(data.type) {
+                        case 'init':
+                            log('✅ Worker initialized');
+                            updateStatus('Worker initialized, loading model...', 'loading');
+                            // Send init command to load model
+                            worker.postMessage({ type: 'init', id: 1 });
+                            break;
+                            
+                        case 'status':
+                            updateStatus(data.message, data.status === 'loading' ? 'loading' : 'normal');
+                            break;
+                            
+                        case 'progress':
+                            updateStatus(`Loading model: ${data.progress}%`, 'loading');
+                            break;
+                            
+                        case 'ready':
+                            log('✅ Model loaded and ready!');
+                            updateStatus('Model loaded and ready!', 'ready');
+                            initBtn.disabled = true;
+                            testBtn.disabled = false;
+                            break;
+                            
+                        case 'error':
+                            log(`❌ Error: ${data.error}`);
+                            updateStatus(`Error: ${data.error}`, 'error');
+                            break;
+                    }
+                };
+                
+                worker.onerror = (error) => {
+                    log(`❌ Worker error: ${error.message}`);
+                    updateStatus(`Worker error: ${error.message}`, 'error');
+                };
+                
+            } catch (error) {
+                log(`❌ Failed to create worker: ${error.message}`);
+                updateStatus(`Failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testTranscription() {
+            if (!worker) return;
+            
+            try {
+                log('Creating test audio...');
+                updateStatus('Testing transcription...', 'loading');
+                
+                // Create a simple test audio (1 second of silence)
+                const sampleRate = 16000;
+                const duration = 1; // 1 second
+                const audioData = new Float32Array(sampleRate * duration);
+                
+                // Add a simple tone for testing
+                for (let i = 0; i < audioData.length; i++) {
+                    audioData[i] = Math.sin(2 * Math.PI * 440 * i / sampleRate) * 0.1;
+                }
+                
+                log('Sending audio to worker...');
+                worker.postMessage({
+                    type: 'transcribe',
+                    id: 2,
+                    audio: audioData,
+                    options: {}
+                });
+                
+            } catch (error) {
+                log(`❌ Test failed: ${error.message}`);
+                updateStatus(`Test failed: ${error.message}`, 'error');
+            }
+        }
+
+        initBtn.addEventListener('click', initializeWorker);
+        testBtn.addEventListener('click', testTranscription);
+        
+        // Log initial state
+        log('Page loaded - Ready to test Whisper worker');
+    </script>
+</body>
+</html>

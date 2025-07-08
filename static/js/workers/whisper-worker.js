@@ -10,6 +10,12 @@ let transcriptionPipeline = null;
 let isModelLoading = false;
 let isModelLoaded = false;
 
+// Send init message when worker loads
+self.postMessage({
+    type: 'init',
+    message: 'Worker initialized'
+});
+
 // Initialize the transcription pipeline
 async function initializePipeline() {
     if (isModelLoaded || isModelLoading) return;
