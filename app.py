@@ -12,9 +12,22 @@ app = Flask(__name__)
 # Configure app
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 
-# Initialize clients
-gemini_client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-elevenlabs = ElevenLabs(api_key=os.environ.get("ELEVENLABS_API_KEY"))
+# Initialize clients with error checking
+try:
+    gemini_api_key = os.environ.get("GEMINI_API_KEY")
+    elevenlabs_api_key = os.environ.get("ELEVENLABS_API_KEY")
+    
+    if not gemini_api_key:
+        print("WARNING: GEMINI_API_KEY not found in environment variables")
+    if not elevenlabs_api_key:
+        print("WARNING: ELEVENLABS_API_KEY not found in environment variables")
+    
+    gemini_client = genai.Client(api_key=gemini_api_key) if gemini_api_key else None
+    elevenlabs = ElevenLabs(api_key=elevenlabs_api_key) if elevenlabs_api_key else None
+except Exception as e:
+    print(f"Error initializing API clients: {e}")
+    gemini_client = None
+    elevenlabs = None
 
 # Gemini model configuration
 GEMINI_MODEL = "gemini-2.5-flash-lite-preview-06-17"
@@ -33,10 +46,27 @@ def health():
     """Health check endpoint"""
     return {'status': 'healthy'}
 
+@app.route('/api-status')
+def api_status():
+    """Check which APIs are configured"""
+    return jsonify({
+        'gemini': {
+            'configured': gemini_client is not None,
+            'api_key_present': bool(os.environ.get("GEMINI_API_KEY"))
+        },
+        'elevenlabs': {
+            'configured': elevenlabs is not None,
+            'api_key_present': bool(os.environ.get("ELEVENLABS_API_KEY"))
+        }
+    })
+
 @app.route('/chat', methods=['POST'])
 def chat():
     """Handle AI chat requests"""
     try:
+        if not gemini_client:
+            return jsonify({'error': 'Gemini API not configured. Please set GEMINI_API_KEY environment variable.'}), 503
+            
         data = request.get_json()
         user_message = data.get('message', '')
         chat_history = data.get('history', [])
@@ -82,7 +112,8 @@ def chat():
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Chat error: {e}")
+        return jsonify({'error': str(e), 'success': False}), 500
 
 @app.route('/synthesize', methods=['POST'])
 def synthesize():
@@ -133,6 +164,11 @@ def synthesize():
 def chat_with_voice():
     """Combined endpoint: AI chat + text-to-speech"""
     try:
+        if not gemini_client:
+            return jsonify({'error': 'Gemini API not configured. Please set GEMINI_API_KEY environment variable.'}), 503
+        if not elevenlabs:
+            return jsonify({'error': 'ElevenLabs API not configured. Please set ELEVENLABS_API_KEY environment variable.'}), 503
+            
         data = request.get_json()
         user_message = data.get('message', '')
         chat_history = data.get('history', [])
@@ -208,7 +244,8 @@ def chat_with_voice():
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Chat-with-voice error: {e}")
+        return jsonify({'error': str(e), 'success': False}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
