@@ -14,7 +14,7 @@ class AIService:
     def __init__(self, api_key: str = None, tool_manager: Optional[ToolManager] = None):
         self.api_key = api_key or os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
         self.client = None
-        self.model = "gemini-2.0-flash-exp"
+        self.model = "gemini-2.5-flash"
         self.tool_manager = tool_manager
         
         if self.api_key:
