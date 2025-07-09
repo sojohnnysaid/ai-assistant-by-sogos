@@ -246,8 +246,7 @@ export class SphereAnimation {
         this.uniforms.u_intensity.value += (targetIntensity - this.uniforms.u_intensity.value) * 0.1;
         this.uniforms.u_partical_size.value += (targetParticleSize - this.uniforms.u_partical_size.value) * 0.1;
 
-        // Rotate sphere
-        this.sphere.rotation.y += 0.002;
+        // No rotation - keep sphere stationary
 
         this.renderer.render(this.scene, this.camera);
     }
