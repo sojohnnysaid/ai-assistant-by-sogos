@@ -12,7 +12,7 @@
           "description": "Name of the file to create",
           "required": true,
           "validation": {
-            "pattern": "^[a-zA-Z0-9_-]+\\.(txt|md|json|csv)$",
+            "pattern": "^[a-zA-Z0-9_\\s-]+(\\.\\w+)?$",
             "max_length": 255
           }
         },
@@ -32,6 +32,11 @@
           "validation": {
             "pattern": "^[a-zA-Z0-9_/-]*$"
           }
+        },
+        "extension": {
+          "type": "string",
+          "description": "File extension (e.g., '.txt', '.json', '.md'). Defaults to .md if not specified",
+          "required": false
         }
       },
       "permissions": {
@@ -39,7 +44,7 @@
         "allowed_paths": ["~/Desktop"],
         "max_file_size": 1048576
       },
-      "ai_description": "Use this tool when the user asks you to create a document, write a file, or save some text to their desktop. Always confirm the filename and content with the user before creating the file."
+      "ai_description": "Use this tool when the user asks you to create a document, write a file, or save some text to their desktop. The filename can include spaces and hyphens. If no extension is provided, it defaults to .md. You can also specify an extension parameter separately."
     }
   ],
   "settings": {
