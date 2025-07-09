@@ -28,6 +28,10 @@ class CreateDocumentTool(BaseTool):
             else:
                 target_path = desktop_path
             
+            # Add .md extension if no extension provided
+            if '.' not in filename:
+                filename = f"{filename}.md"
+            
             # Full file path
             file_path = target_path / filename
             
@@ -68,7 +72,7 @@ class CreateDocumentTool(BaseTool):
                     "file_path": str(file_path),
                     "file_size": len(content.encode('utf-8')),
                     "created_at": datetime.now().isoformat(),
-                    "message": f"Successfully created {filename} at {file_path}"
+                    "message": f"Successfully created {file_path.name} at {file_path}"
                 }
             )
             

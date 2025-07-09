@@ -152,6 +152,7 @@ class AIService:
                             "tool_id": part.function_call.name,
                             "parameters": dict(part.function_call.args) if part.function_call.args else {}
                         }
+                        print(f"[AIService] Detected function call: {tool_call}")
                     elif hasattr(part, 'text') and part.text:
                         ai_response += part.text
             
