@@ -220,7 +220,9 @@ self.addEventListener('message', async (event) => {
             self.postMessage({
                 id,
                 type: 'result',
-                text: result.text || ''
+                result: {
+                    text: result.text || ''
+                }
             });
         }
         else {

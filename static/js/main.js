@@ -200,7 +200,7 @@ class VoiceChatApp {
         
         if (this.isAIChatMode()) {
           // Add user message to chat
-          this.ui.addChatMessage(cleanText, 'user');
+          this.ui.addChatMessage('user', cleanText);
           
           // Process with AI
           await this.processAIResponse(cleanText);
@@ -239,7 +239,7 @@ class VoiceChatApp {
       this.ui.hideAIThinking();
       
       // Add AI message to chat
-      this.ui.addChatMessage(response.text, 'assistant');
+      this.ui.addChatMessage('assistant', response.text);
       
       // Play AI voice response if available
       if (response.audio) {
