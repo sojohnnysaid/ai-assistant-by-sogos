@@ -61,7 +61,7 @@ GEMINI_MODEL = "gemini-2.0-flash-exp"  # Experimental model optimized for speed
 
 # ElevenLabs voice configuration
 VOICE_ID = "G17SuINrv2H9FC6nvetn"  # Updated voice ID
-VOICE_MODEL = "eleven_turbo_v2_5"  # Use turbo model for low latency
+VOICE_MODEL = "eleven_flash_v2_5"  # Use flash model for lowest latency
 
 @app.route('/')
 def index():
