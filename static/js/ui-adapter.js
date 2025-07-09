@@ -303,8 +303,10 @@ class UIAdapter {
         
         this.elements.transcriptionContent.appendChild(messageDiv);
         
-        // Auto-scroll to bottom
-        this.elements.transcriptionContent.scrollTop = this.elements.transcriptionContent.scrollHeight;
+        // Auto-scroll to bottom with slight delay for smooth scrolling
+        requestAnimationFrame(() => {
+            this.elements.transcriptionContent.scrollTop = this.elements.transcriptionContent.scrollHeight;
+        });
     }
 
     // Show thinking indicator
@@ -317,8 +319,10 @@ class UIAdapter {
         thinkingDiv.innerHTML = '<span class="thinking-indicator">AGENT IS THINKING</span>';
         this.elements.transcriptionContent.appendChild(thinkingDiv);
         
-        // Auto-scroll
-        this.elements.transcriptionContent.scrollTop = this.elements.transcriptionContent.scrollHeight;
+        // Auto-scroll with smooth behavior
+        requestAnimationFrame(() => {
+            this.elements.transcriptionContent.scrollTop = this.elements.transcriptionContent.scrollHeight;
+        });
     }
 
     // Hide thinking indicator

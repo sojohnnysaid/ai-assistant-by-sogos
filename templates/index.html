@@ -144,6 +144,8 @@
             border-left: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
         }
         
         /* Section Headers */
@@ -254,6 +256,12 @@
             font-size: 13px;
             line-height: 1.6;
             color: var(--text-secondary);
+            overflow: hidden;
+            min-height: 0;
+        }
+        
+        #transcriptionContent {
+            scroll-behavior: smooth;
         }
         
         .transcription-label {
