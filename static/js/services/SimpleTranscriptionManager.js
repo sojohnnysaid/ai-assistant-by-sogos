@@ -33,6 +33,7 @@ export class SimpleTranscriptionManager {
       // When speech starts
       const unsubscribe1 = this.vad.on('speechstart', () => {
         console.log('[SimpleTranscriptionManager] Speech started');
+        this.eventBus.emit('speech:start');
         this.eventBus.emit('transcription:status', {
           type: 'speaking',
           message: 'Listening to speech...'
@@ -43,6 +44,7 @@ export class SimpleTranscriptionManager {
       // When speech ends
       const unsubscribe2 = this.vad.on('speechend', async (audioData) => {
         console.log('[SimpleTranscriptionManager] Speech ended, processing audio...');
+        this.eventBus.emit('speech:end');
         
         // Update status
         this.eventBus.emit('transcription:status', {

@@ -504,6 +504,9 @@ export class UIController {
       // Emit event when audio starts playing
       this.eventBus.emit('audio:playback:start');
       
+      // Store reference to current audio player for pause/resume
+      this.currentAudioPlayer = player;
+      
       // Convert base64 to blob
       const byteCharacters = atob(audioBase64);
       const byteNumbers = new Array(byteCharacters.length);
@@ -531,7 +534,15 @@ export class UIController {
       // Clean up blob URL and emit event when done
       player.addEventListener('ended', () => {
         URL.revokeObjectURL(audioUrl);
+        this.currentAudioPlayer = null;
         this.eventBus.emit('audio:playback:end');
+      }, { once: true });
+      
+      // Also handle pause events
+      player.addEventListener('pause', () => {
+        if (!player.ended) {
+          this.eventBus.emit('audio:playback:paused');
+        }
       }, { once: true });
       
       // Play audio
@@ -551,5 +562,37 @@ export class UIController {
   isChatMode() {
     const toggle = this.elements.chatModeToggle;
     return toggle ? toggle.checked : false;
+  }
+  
+  /**
+   * Pause current audio playback
+   */
+  pauseAudio() {
+    if (this.currentAudioPlayer && !this.currentAudioPlayer.paused) {
+      console.log('[UIController] Pausing audio playback');
+      this.currentAudioPlayer.pause();
+      this.audioWasPaused = true;
+    }
+  }
+  
+  /**
+   * Resume audio playback if it was paused
+   */
+  resumeAudio() {
+    if (this.currentAudioPlayer && this.currentAudioPlayer.paused && this.audioWasPaused) {
+      console.log('[UIController] Resuming audio playback');
+      this.currentAudioPlayer.play().catch(err => {
+        console.warn('[UIController] Could not resume audio:', err);
+      });
+      this.audioWasPaused = false;
+    }
+  }
+  
+  /**
+   * Check if audio is currently playing
+   * @returns {boolean}
+   */
+  isAudioPlaying() {
+    return this.currentAudioPlayer && !this.currentAudioPlayer.paused && !this.currentAudioPlayer.ended;
   }
 }

@@ -147,6 +147,24 @@ class VoiceChatApp {
    * Set up transcription event handlers
    */
   setupTranscriptionHandlers() {
+    // Speech events - handle audio pause/resume
+    this.eventBus.on('speech:start', () => {
+      this.state.set('transcription.isSpeaking', true);
+      // Pause AI audio when user starts speaking
+      if (this.ui.isAudioPlaying()) {
+        console.log('[VoiceChatApp] User started speaking, pausing AI audio');
+        this.ui.pauseAudio();
+      }
+    });
+    
+    this.eventBus.on('speech:end', () => {
+      this.state.set('transcription.isSpeaking', false);
+      // Resume AI audio when user stops speaking
+      setTimeout(() => {
+        this.ui.resumeAudio();
+      }, 500); // Small delay to avoid accidental resume
+    });
+    
     // Transcription started
     this.eventBus.on('transcription:started', () => {
       this.state.set('transcription.isActive', true);
