@@ -12,7 +12,7 @@
           "description": "Name of the file to create",
           "required": true,
           "validation": {
-            "pattern": "^[a-zA-Z0-9_\\s-]+(\\.\\w+)?$",
+            "pattern": "^[a-zA-Z0-9_\\s\\-']+(\\.\\w+)?$",
             "max_length": 255
           }
         },
