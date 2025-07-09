@@ -9,7 +9,7 @@
       "parameters": {
         "filename": {
           "type": "string",
-          "description": "Name of the file to create",
+          "description": "Base name of the file without extension (e.g., 'todos', 'meeting-notes')",
           "required": true,
           "validation": {
             "pattern": "^[a-zA-Z0-9_\\s\\-]+(\\.\\w+)?$",
@@ -18,7 +18,7 @@
         },
         "content": {
           "type": "string",
-          "description": "Content to write to the file",
+          "description": "Content to write to the file, properly formatted for the file type (markdown for .md, plain text for .txt, etc.)",
           "required": true,
           "validation": {
             "max_length": 1048576
@@ -44,7 +44,7 @@
         "allowed_paths": ["~/Desktop"],
         "max_file_size": 1048576
       },
-      "ai_description": "Use this tool when the user asks you to create a document, write a file, or save some text to their desktop. IMPORTANT: If the user doesn't specify an extension, add '.md' to the filename (e.g., 'todos' becomes 'todos.md'). The filename can include spaces, hyphens, and underscores but NOT apostrophes - convert apostrophes to hyphens (e.g., 'to-do's' becomes 'to-dos.md'). You can also use the extension parameter if the user specifies a different format like .txt or .json."
+      "ai_description": "Use this tool when the user asks you to create a document. IMPORTANT: Format the content properly based on the file type - for .md files use markdown with proper headers and lists (e.g., '# Title\\n\\n- Item 1\\n- Item 2'), for .txt use plain text, for .json use valid JSON. If the user doesn't specify an extension, use .md and format as markdown. The filename should NOT include the extension - just the base name (e.g., 'todos' not 'todos.md'). Convert apostrophes in filenames to hyphens (e.g., 'to-do's' becomes 'to-dos'). Always format lists with proper markdown bullets or numbers."
     }
   ],
   "settings": {

@@ -17,6 +17,7 @@ class CreateDocumentTool(BaseTool):
             filename = parameters.get("filename")
             content = parameters.get("content", "")
             folder = parameters.get("folder", "")
+            extension = parameters.get("extension", ".md")
             
             # Get desktop path
             desktop_path = Path.home() / "Desktop"
@@ -28,9 +29,12 @@ class CreateDocumentTool(BaseTool):
             else:
                 target_path = desktop_path
             
-            # Add .md extension if no extension provided
+            # Handle extension
             if '.' not in filename:
-                filename = f"{filename}.md"
+                # Ensure extension starts with dot
+                if extension and not extension.startswith('.'):
+                    extension = '.' + extension
+                filename = f"{filename}{extension}"
             
             # Full file path
             file_path = target_path / filename
