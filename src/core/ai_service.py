@@ -29,21 +29,51 @@ class AIService:
         return self.client is not None
     
     def _build_system_instruction(self) -> str:
-        """Build system instruction including tool usage instructions"""
+        """Build system instruction"""
         base_instruction = "You are a helpful, concise voice assistant. Respond in 1-2 short sentences. Be conversational and natural."
         
         if self.tool_manager and self.tool_manager.is_enabled():
             ai_instructions = self.tool_manager.get_ai_instructions()
             tool_prompt = ai_instructions.get("system_prompt_addition", "")
-            
-            # Add available tools to the instruction
-            tools = self.tool_manager.get_tools_for_ai()
-            if tools:
-                tool_list = json.dumps(tools, indent=2)
-                tool_instruction = f"\n\n{tool_prompt}\n\nAvailable tools:\n{tool_list}\n\nWhen you need to use a tool, respond with a JSON block in this format:\n```json\n{{\n  \"tool_call\": {{\n    \"tool_id\": \"tool_name\",\n    \"parameters\": {{\n      \"param1\": \"value1\"\n    }}\n  }}\n}}\n```"
-                return base_instruction + tool_instruction
+            return base_instruction + "\n\n" + tool_prompt
         
         return base_instruction
+    
+    def _build_tool_declarations(self) -> Optional[List[types.Tool]]:
+        """Build Gemini function declarations from available tools"""
+        if not self.tool_manager or not self.tool_manager.is_enabled():
+            return None
+        
+        tools_config = self.tool_manager.get_tools_for_ai()
+        if not tools_config:
+            return None
+        
+        function_declarations = []
+        for tool in tools_config:
+            # Convert tool config to Gemini function declaration format
+            properties = {}
+            required = []
+            
+            if 'parameters' in tool:
+                for param_name, param_config in tool['parameters'].items():
+                    properties[param_name] = {
+                        "type": param_config.get('type', 'string'),
+                        "description": param_config.get('description', '')
+                    }
+                    if param_config.get('required', False):
+                        required.append(param_name)
+            
+            function_declarations.append({
+                "name": tool['id'],
+                "description": tool.get('description', ''),
+                "parameters": {
+                    "type": "object",
+                    "properties": properties,
+                    "required": required
+                }
+            })
+        
+        return [types.Tool(function_declarations=function_declarations)]
     
     def _extract_tool_call(self, response: str) -> Optional[Dict[str, Any]]:
         """Extract tool call from AI response"""
@@ -92,6 +122,7 @@ class AIService:
             ))
             
             # Generate response
+            tools = self._build_tool_declarations()
             generate_config = types.GenerateContentConfig(
                 thinking_config=types.ThinkingConfig(thinking_budget=0),
                 response_mime_type="text/plain",
@@ -99,20 +130,30 @@ class AIService:
                 max_output_tokens=200,  # Increased for tool calls
                 candidate_count=1,
                 system_instruction=self._build_system_instruction(),
+                tools=tools if tools else None,
             )
             
-            # Collect response
-            ai_response = ""
-            for chunk in self.client.models.generate_content_stream(
+            # Generate response (not streaming to properly handle function calls)
+            response = self.client.models.generate_content(
                 model=self.model,
                 contents=contents,
                 config=generate_config,
-            ):
-                if chunk.text:
-                    ai_response += chunk.text
+            )
             
-            # Check for tool calls
-            tool_call = self._extract_tool_call(ai_response)
+            # Check for function calls in the response
+            tool_call = None
+            ai_response = ""
+            
+            if response.candidates and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, 'function_call') and part.function_call:
+                        # Extract function call details
+                        tool_call = {
+                            "tool_id": part.function_call.name,
+                            "parameters": dict(part.function_call.args) if part.function_call.args else {}
+                        }
+                    elif hasattr(part, 'text') and part.text:
+                        ai_response += part.text
             
             if tool_call and self.tool_manager:
                 # Execute the tool
@@ -122,25 +163,64 @@ class AIService:
                     user_confirmed=tool_call.get("confirmed", False)
                 )
                 
-                # Format response based on tool result
-                if tool_result.success:
-                    tool_message = tool_result.data.get("message", "Tool executed successfully")
-                    final_response = f"I've {tool_message}"
-                else:
-                    if tool_result.data and tool_result.data.get("requires_confirmation"):
-                        final_response = ai_response  # Keep original response asking for confirmation
-                    else:
-                        final_response = f"I couldn't complete that action: {tool_result.error}"
-                
-                return {
-                    "response": final_response,
-                    "success": True,
-                    "tool_execution": {
-                        "executed": True,
-                        "tool_id": tool_call.get("tool_id"),
-                        "result": tool_result.to_dict()
+                # If confirmation is required, return the AI's response asking for it
+                if tool_result.data and tool_result.data.get("requires_confirmation"):
+                    return {
+                        "response": ai_response if ai_response else f"I can help you create that document. Please confirm you want me to save {tool_call.get('parameters', {}).get('filename', 'the file')} to your desktop.",
+                        "success": True,
+                        "tool_execution": {
+                            "executed": False,
+                            "requires_confirmation": True,
+                            "tool_id": tool_call.get("tool_id"),
+                            "parameters": tool_call.get("parameters", {})
+                        }
                     }
-                }
+                
+                # If tool execution succeeded, send result back to model for user-friendly response
+                if tool_result.success:
+                    # Create function response part
+                    function_response_part = types.Part.from_function_response(
+                        name=tool_call.get("tool_id"),
+                        response={"result": tool_result.data}
+                    )
+                    
+                    # Append function call and result to contents
+                    contents.append(response.candidates[0].content)
+                    contents.append(types.Content(role="user", parts=[function_response_part]))
+                    
+                    # Get final response from model
+                    final_response = self.client.models.generate_content(
+                        model=self.model,
+                        contents=contents,
+                        config=generate_config,
+                    )
+                    
+                    final_text = ""
+                    if final_response.candidates and final_response.candidates[0].content.parts:
+                        for part in final_response.candidates[0].content.parts:
+                            if hasattr(part, 'text') and part.text:
+                                final_text += part.text
+                    
+                    return {
+                        "response": final_text if final_text else f"I've successfully {tool_result.data.get('message', 'completed the action')}",
+                        "success": True,
+                        "tool_execution": {
+                            "executed": True,
+                            "tool_id": tool_call.get("tool_id"),
+                            "result": tool_result.to_dict()
+                        }
+                    }
+                else:
+                    # Tool execution failed
+                    return {
+                        "response": f"I couldn't complete that action: {tool_result.error}",
+                        "success": True,
+                        "tool_execution": {
+                            "executed": False,
+                            "tool_id": tool_call.get("tool_id"),
+                            "error": tool_result.error
+                        }
+                    }
             else:
                 # No tool call, return normal response
                 # Remove any JSON blocks from the response
