@@ -111,6 +111,14 @@ class VoiceChatApp {
         this.transcriptionManager.resume();
       }
     });
+
+    // Also resume when audio is stopped (interrupted)
+    this.eventBus.on('audio:playback:stopped', () => {
+      console.log('[VoiceChatApp] AI audio playback stopped, resuming transcription');
+      if (this.transcriptionManager && this.state.get('transcription.isActive')) {
+        this.transcriptionManager.resume();
+      }
+    });
     
     // Transcription button
     const transcriptionBtn = this.ui.elements.startTranscriptionBtn;

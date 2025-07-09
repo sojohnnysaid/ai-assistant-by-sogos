@@ -4,6 +4,12 @@
 // Import using importScripts for web worker compatibility
 importScripts('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');
 
+// Configure ONNX to suppress warnings
+if (self.transformers && self.transformers.env) {
+    self.transformers.env.onnx = self.transformers.env.onnx || {};
+    self.transformers.env.onnx.logLevel = 'error'; // Only show errors, not warnings
+}
+
 // Configuration
 const MODEL_NAME = 'Xenova/whisper-tiny.en';
 let transcriptionPipeline = null;

@@ -48,6 +48,9 @@ async function initialize() {
         
         // Configure environment
         env.allowLocalModels = false;
+        // Suppress ONNX runtime warnings about unused initializers
+        env.onnx = env.onnx || {};
+        env.onnx.logLevel = 'error'; // Only show errors, not warnings
         env.remoteURL = 'https://huggingface.co/';
         
         // Suppress ONNX Runtime warnings globally

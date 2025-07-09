@@ -27,6 +27,9 @@ async function initialize() {
         // Configure environment
         env.allowLocalModels = false;
         env.remoteURL = 'https://huggingface.co/';
+        // Suppress ONNX runtime warnings about unused initializers
+        env.onnx = env.onnx || {};
+        env.onnx.logLevel = 'error'; // Only show errors, not warnings
         
         isInitialized = true;
         isLoading = false;
