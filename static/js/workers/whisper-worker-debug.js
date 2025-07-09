@@ -95,6 +95,10 @@ async function loadModel() {
         
         modelInstance = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', {
             quantized: true,
+            // Add session options to suppress ONNX warnings
+            session_options: {
+                logSeverityLevel: 3, // Only show errors, not warnings
+            },
             progress_callback: (progress) => {
                 console.log('[WhisperWorker] Model loading progress:', progress);
                 self.postMessage({

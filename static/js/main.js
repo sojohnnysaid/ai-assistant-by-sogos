@@ -34,7 +34,7 @@ class VoiceChatApp {
     this.errorHandler = new ErrorHandler(this.eventBus);
     
     // UI controller
-    this.ui = new UIController();
+    this.ui = new UIController(this.eventBus);
     
     // Services
     this.transcriptionWorker = new TranscriptionWorker();
@@ -75,6 +75,21 @@ class VoiceChatApp {
    * Set up event listeners
    */
   setupEventListeners() {
+    // Audio playback events
+    this.eventBus.on('audio:playback:start', () => {
+      console.log('[VoiceChatApp] AI audio playback started, pausing transcription');
+      if (this.transcriptionManager && this.state.get('transcription.isActive')) {
+        this.transcriptionManager.pause();
+      }
+    });
+    
+    this.eventBus.on('audio:playback:end', () => {
+      console.log('[VoiceChatApp] AI audio playback ended, resuming transcription');
+      if (this.transcriptionManager && this.state.get('transcription.isActive')) {
+        this.transcriptionManager.resume();
+      }
+    });
+    
     // Transcription button
     const transcriptionBtn = this.ui.elements.startTranscriptionBtn;
     if (transcriptionBtn) {

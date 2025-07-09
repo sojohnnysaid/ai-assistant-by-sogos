@@ -2,7 +2,8 @@
  * UIController - Centralizes all DOM manipulation for transcription
  */
 export class UIController {
-  constructor() {
+  constructor(eventBus) {
+    this.eventBus = eventBus;
     this.elements = {};
     this.templates = {};
     this.initializeElements();
@@ -444,6 +445,9 @@ export class UIController {
     if (!player) return;
     
     try {
+      // Emit event when audio starts playing
+      this.eventBus.emit('audio:playback:start');
+      
       // Convert base64 to blob
       const byteCharacters = atob(audioBase64);
       const byteNumbers = new Array(byteCharacters.length);
@@ -457,9 +461,10 @@ export class UIController {
       const audioUrl = URL.createObjectURL(blob);
       player.src = audioUrl;
       
-      // Clean up blob URL when done
+      // Clean up blob URL and emit event when done
       player.addEventListener('ended', () => {
         URL.revokeObjectURL(audioUrl);
+        this.eventBus.emit('audio:playback:end');
       }, { once: true });
       
       // Play audio
@@ -467,6 +472,7 @@ export class UIController {
       
     } catch (error) {
       console.error('Failed to play audio:', error);
+      this.eventBus.emit('audio:playback:end'); // Ensure we emit end even on error
       throw error;
     }
   }

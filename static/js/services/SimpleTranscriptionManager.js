@@ -9,6 +9,7 @@ export class SimpleTranscriptionManager {
     
     this.isActive = false;
     this.isTranscribing = false;
+    this.isPaused = false;
     this.unsubscribers = [];
   }
 
@@ -155,11 +156,46 @@ export class SimpleTranscriptionManager {
   }
 
   /**
+   * Pause transcription (keep listening but don't process)
+   */
+  pause() {
+    if (!this.isRunning) return;
+    
+    console.log('[SimpleTranscriptionManager] Pausing transcription...');
+    this.isPaused = true;
+    
+    // Pause VAD if it has a pause method
+    if (this.vad && this.vad.pause) {
+      this.vad.pause();
+    }
+  }
+  
+  /**
+   * Resume transcription
+   */
+  resume() {
+    if (!this.isRunning || !this.isPaused) return;
+    
+    console.log('[SimpleTranscriptionManager] Resuming transcription...');
+    this.isPaused = false;
+    
+    // Resume VAD if it has a resume method
+    if (this.vad && this.vad.resume) {
+      this.vad.resume();
+    }
+  }
+
+  /**
    * Transcribe audio data
    */
   async transcribeAudio(audioData) {
     if (this.isTranscribing) {
       console.log('[SimpleTranscriptionManager] Already transcribing, skipping...');
+      return;
+    }
+    
+    if (this.isPaused) {
+      console.log('[SimpleTranscriptionManager] Transcription is paused, skipping...');
       return;
     }
     
