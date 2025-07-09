@@ -122,6 +122,11 @@ class UIAdapter {
     }
 
     overrideUIControllerMethods() {
+        // Prevent multiple overrides
+        if (this.overrideComplete) {
+            return;
+        }
+        
         // Wait for UIController to be available
         const checkAndOverride = () => {
             const uiController = window.UIController || window.uiController || 
@@ -134,6 +139,9 @@ class UIAdapter {
                 return;
             }
 
+            // Mark as complete to prevent duplicate overrides
+            this.overrideComplete = true;
+            
             console.log('[UIAdapter] Found UIController, overriding methods');
             const ui = uiController;
             const adapter = this;
@@ -164,9 +172,7 @@ class UIAdapter {
 
             ui.addChatMessage = function(role, content) {
                 console.log('[UIAdapter] addChatMessage:', role, content);
-                if (originals.addChatMessage) {
-                    originals.addChatMessage(role, content);
-                }
+                // Only use adapter's addMessage, don't call the original
                 adapter.addMessage(role, content);
             };
 
@@ -204,11 +210,11 @@ class UIAdapter {
 
             ui.appendTranscription = function(text) {
                 console.log('[UIAdapter] appendTranscription:', text);
-                if (originals.appendTranscription) {
-                    originals.appendTranscription(text);
+                // Only add as user message if not in AI mode
+                // In AI mode, messages are added via addChatMessage
+                if (!adapter.isAIMode) {
+                    adapter.addMessage('user', text);
                 }
-                // For now, add as user message
-                adapter.addMessage('user', text);
             };
 
             ui.updateTranscriptionStatus = function(status, isError = false) {
