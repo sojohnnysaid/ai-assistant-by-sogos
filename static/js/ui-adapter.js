@@ -288,7 +288,7 @@ class UIAdapter {
         labelSpan.textContent = role === 'user' ? 'YOU:' : 'AGENT:';
         
         const contentSpan = document.createElement('span');
-        contentSpan.textContent = content;
+        contentSpan.textContent = ' ' + content;
         
         messageDiv.appendChild(labelSpan);
         messageDiv.appendChild(contentSpan);

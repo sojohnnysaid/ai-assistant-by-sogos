@@ -225,7 +225,8 @@
         .transcription-area {
             flex: 1;
             padding: 24px;
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
             font-size: 13px;
             line-height: 1.6;
             color: var(--text-secondary);
@@ -263,6 +264,25 @@
             margin-bottom: 16px;
             padding-bottom: 16px;
             border-bottom: 1px solid rgba(32, 32, 32, 0.3);
+        }
+        
+        .message-entry:last-child {
+            border-bottom: none;
+        }
+        
+        /* Thinking Indicator */
+        .thinking-indicator {
+            color: var(--cyan);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 11px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 1; }
+            100% { opacity: 0.4; }
         }
         
         /* Hidden elements */
@@ -427,8 +447,8 @@
         <!-- Right Panel - Transcription -->
         <div class="right-panel">
             <div class="transcription-area">
-                <div class="transcription-label">TRANSCRIPTION</div>
-                <div id="transcriptionContent">
+                <div class="transcription-label">LIVE TRANSCRIPTION</div>
+                <div id="transcriptionContent" style="flex: 1; overflow-y: auto; padding-right: 8px;">
                     <!-- Messages will appear here -->
                     <div class="message-entry" style="color: var(--text-tertiary); font-style: italic;">
                         Click "Start Listening" to begin conversation...
