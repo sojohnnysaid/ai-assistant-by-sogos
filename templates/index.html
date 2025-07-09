@@ -337,41 +337,36 @@
             <div class="section-header">AGENT CONFIGURATION</div>
             
             <div class="status-item">
-                <span class="status-label">VAD</span>
-                <span class="status-value text-glow">SILERO</span>
+                <span class="status-label">SPEECH-TO-TEXT</span>
+                <span class="status-value text-glow">WHISPER TINY</span>
             </div>
             
             <div class="status-item">
-                <span class="status-label">SPEECH-TO-TEXT MODEL</span>
-                <span class="status-value">DEEPGRAM</span>
+                <span class="status-label">AI MODEL</span>
+                <span class="status-value">GEMINI 2.0 FLASH</span>
             </div>
             
             <div class="status-item">
-                <span class="status-label">LLM MODEL</span>
-                <span class="status-value">NOVA-3</span>
-            </div>
-            
-            <div class="status-item">
-                <span class="status-label">TEXT-TO-SPEECH MODEL</span>
-                <span class="status-value">OPENAI</span>
+                <span class="status-label">TEXT-TO-SPEECH</span>
+                <span class="status-value">ELEVENLABS</span>
             </div>
             
             <div class="status-item">
                 <span class="status-label">VOICE</span>
-                <span class="status-value text-glow text-glow-subtle">GPT-4O-MINI</span>
+                <span class="status-value text-glow text-glow-subtle">BRIAN</span>
             </div>
             
             <div style="margin-top: 40px;">
-                <div class="section-header">ENHANCEMENTS</div>
+                <div class="section-header">PROCESSING</div>
                 
                 <div class="status-item">
-                    <span class="status-label">TURN DETECTION</span>
-                    <span class="status-value text-glow">ELEVEN LABS</span>
+                    <span class="status-label">AUDIO FORMAT</span>
+                    <span class="status-value text-glow">16KHZ MONO</span>
                 </div>
                 
                 <div class="status-item">
-                    <span class="status-label">NOISE CANCELLATION</span>
-                    <span class="status-value text-glow-subtle">ELEVEN TURBO V2.5</span>
+                    <span class="status-label">BUFFER SIZE</span>
+                    <span class="status-value text-glow-subtle">4096 SAMPLES</span>
                 </div>
             </div>
             
@@ -384,23 +379,23 @@
                 </div>
                 
                 <div class="status-item">
-                    <span class="status-label">END OF TURN</span>
-                    <span class="status-value" id="eotLatency">324MS</span>
+                    <span class="status-label">TRANSCRIPTION</span>
+                    <span class="status-value" id="eotLatency">-</span>
                 </div>
                 
                 <div class="status-item">
-                    <span class="status-label">LLM</span>
-                    <span class="status-value" id="llmLatency">2670MS</span>
+                    <span class="status-label">AI RESPONSE</span>
+                    <span class="status-value" id="llmLatency">-</span>
                 </div>
                 
                 <div class="status-item">
                     <span class="status-label">TEXT-TO-SPEECH</span>
-                    <span class="status-value" id="ttsLatency">391MS</span>
+                    <span class="status-value" id="ttsLatency">-</span>
                 </div>
                 
                 <div class="status-item">
                     <span class="status-label">OVERALL</span>
-                    <span class="status-value text-glow" id="overallLatency">533MS</span>
+                    <span class="status-value text-glow" id="overallLatency">-</span>
                 </div>
             </div>
         </div>
