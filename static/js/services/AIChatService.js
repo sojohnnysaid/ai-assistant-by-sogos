@@ -51,12 +51,19 @@ export class AIChatService {
           content: data.response
         });
 
-        return {
+        const result = {
           text: data.response,
           audio: data.audio,
           audioFormat: data.audio_format || 'mp3',
           sampleRate: data.sample_rate || 22050
         };
+
+        // Add tool execution info if present
+        if (data.tool_execution) {
+          result.toolExecution = data.tool_execution;
+        }
+
+        return result;
       } else {
         throw new Error(data.error || 'Failed to get AI response');
       }
@@ -178,5 +185,58 @@ export class AIChatService {
    */
   isProcessingMessage() {
     return this.isProcessing;
+  }
+
+  /**
+   * Execute a tool with confirmation
+   * @param {string} toolId - Tool ID
+   * @param {Object} parameters - Tool parameters
+   * @param {boolean} confirmed - Whether user confirmed
+   * @returns {Promise<Object>} Tool execution result
+   */
+  async executeTool(toolId, parameters, confirmed = false) {
+    try {
+      const response = await fetch('/tools/execute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tool_id: toolId,
+          parameters: parameters,
+          confirmed: confirmed
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      return await response.json();
+
+    } catch (error) {
+      console.error('Tool execution error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get available tools
+   * @returns {Promise<Object>} Available tools
+   */
+  async getAvailableTools() {
+    try {
+      const response = await fetch('/tools');
+      
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      return await response.json();
+
+    } catch (error) {
+      console.error('Error fetching tools:', error);
+      throw error;
+    }
   }
 }

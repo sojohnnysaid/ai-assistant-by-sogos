@@ -1,0 +1,62 @@
+{
+  "tools": [
+    {
+      "id": "create_document",
+      "name": "Create Document",
+      "description": "Creates a new document file on the user's desktop",
+      "category": "file_system",
+      "enabled": true,
+      "parameters": {
+        "filename": {
+          "type": "string",
+          "description": "Name of the file to create",
+          "required": true,
+          "validation": {
+            "pattern": "^[a-zA-Z0-9_-]+\\.(txt|md|json|csv)$",
+            "max_length": 255
+          }
+        },
+        "content": {
+          "type": "string",
+          "description": "Content to write to the file",
+          "required": true,
+          "validation": {
+            "max_length": 1048576
+          }
+        },
+        "folder": {
+          "type": "string",
+          "description": "Subfolder on desktop (optional)",
+          "required": false,
+          "default": "",
+          "validation": {
+            "pattern": "^[a-zA-Z0-9_/-]*$"
+          }
+        }
+      },
+      "permissions": {
+        "require_confirmation": true,
+        "allowed_paths": ["~/Desktop"],
+        "max_file_size": 1048576
+      },
+      "ai_description": "Use this tool when the user asks you to create a document, write a file, or save some text to their desktop. Always confirm the filename and content with the user before creating the file."
+    }
+  ],
+  "settings": {
+    "enable_tools": true,
+    "confirmation_mode": "always",
+    "log_tool_usage": true,
+    "tool_timeout_seconds": 30,
+    "max_concurrent_tools": 3
+  },
+  "ai_instructions": {
+    "system_prompt_addition": "You have access to tools that can perform actions on the user's behalf. When a user requests an action that matches a tool's capability, use the appropriate tool. Always explain what you're about to do before using a tool.",
+    "tool_usage_format": {
+      "type": "function_call",
+      "structure": {
+        "tool_id": "string",
+        "parameters": "object"
+      }
+    }
+  }
+}
