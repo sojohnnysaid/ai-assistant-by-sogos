@@ -342,6 +342,11 @@
         }
         
         @media (max-width: 768px) {
+            #sphereContainer {
+                width: min(400px, 80vw);
+                height: min(400px, 50vh);
+            }
+            
             .controls-container {
                 gap: 15px;
                 padding-bottom: 20px;
@@ -350,6 +355,21 @@
             .control-button {
                 padding: 10px 20px;
                 font-size: 11px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #sphereContainer {
+                width: min(300px, 75vw);
+                height: min(300px, 40vh);
+            }
+            
+            .sphere-wrapper {
+                max-height: 50vh;
+            }
+            
+            .center-area {
+                padding: 10px;
             }
         }
         
