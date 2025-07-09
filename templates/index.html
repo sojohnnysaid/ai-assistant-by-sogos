@@ -3,242 +3,433 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Voice Chat</title>
+    <title>AI Voice Assistant</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
     <script>
         // Configure ONNX Runtime to suppress warnings
         if (typeof ort !== 'undefined') {
-            ort.env.logLevel = 'error';  // Only show errors, not warnings
-            ort.env.wasm.numThreads = 1;  // Use single thread for stability
+            ort.env.logLevel = 'error';
+            ort.env.wasm.numThreads = 1;
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js"></script>
-    <!-- Add custom animations -->
+    
+    <!-- Custom styles for new design -->
     <style>
-        @keyframes wave-1 {
-            0%, 60%, 100% { transform: scaleY(1); }
-            30% { transform: scaleY(1.5); }
-        }
-        @keyframes wave-2 {
-            0%, 60%, 100% { transform: scaleY(1); }
-            40% { transform: scaleY(1.5); }
-        }
-        @keyframes wave-3 {
-            0%, 60%, 100% { transform: scaleY(1); }
-            50% { transform: scaleY(1.5); }
-        }
-        .animate-wave-1 { animation: wave-1 1.2s infinite ease-in-out; }
-        .animate-wave-2 { animation: wave-2 1.2s infinite ease-in-out; animation-delay: 0.1s; }
-        .animate-wave-3 { animation: wave-3 1.2s infinite ease-in-out; animation-delay: 0.2s; }
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
         
-        @keyframes fade-in {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        .animate-fade-in {
-            animation: fade-in 0.3s ease-out;
+        :root {
+            --cyan: rgb(7, 182, 218);
+            --cyan-glow: #035c6d;
+            --bg-primary: #070707;
+            --bg-secondary: #131313;
+            --bg-tertiary: #1f1f1f;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --text-tertiary: #666666;
+            --border-color: #202020;
+            --purple-accent: #9230aa;
+            --blue-accent: #0b435f;
         }
         
-        @keyframes dots {
-            0%, 20% { content: '.'; }
-            40% { content: '..'; }
-            60%, 100% { content: '...'; }
-        }
-        .typing-dots::after {
-            content: '.';
-            animation: dots 1.5s infinite;
+        * {
+            box-sizing: border-box;
         }
         
-        /* Chat message styles */
-        .chat-message {
-            animation: fade-in 0.3s ease-out;
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: var(--bg-primary);
+            color: var(--text-secondary);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
         }
         
-        /* Smooth scrollbar for chat area */
-        #chatContainer::-webkit-scrollbar {
-            width: 6px;
-        }
-        #chatContainer::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 3px;
-        }
-        #chatContainer::-webkit-scrollbar-thumb {
-            background: rgba(156, 163, 175, 0.3);
-            border-radius: 3px;
-        }
-        #chatContainer::-webkit-scrollbar-thumb:hover {
-            background: rgba(156, 163, 175, 0.5);
+        /* Glow text utility */
+        .text-glow {
+            text-shadow: 0 0 20px var(--cyan-glow);
         }
         
-        /* Custom container sizing */
-        .main-container {
-            max-width: 900px;
-            width: 95%;
+        .text-glow-subtle {
+            text-shadow: 0 0 10px var(--cyan-glow);
         }
         
-        /* Larger chat container */
-        #chatContainer {
-            height: 450px;
-            max-height: 60vh;
+        /* Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            height: 100vh;
+            gap: 0;
         }
         
-        /* Larger font sizes */
-        .chat-message {
-            font-size: 1.1rem;
+        /* Left Panel */
+        .left-panel {
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            padding: 24px;
+            overflow-y: auto;
+        }
+        
+        /* Center - Sphere Area */
+        .center-area {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(ellipse at center, rgba(11, 67, 95, 0.2) 0%, var(--bg-primary) 60%);
+        }
+        
+        #sphereContainer {
+            width: 600px;
+            height: 600px;
+            position: relative;
+        }
+        
+        /* Right Panel */
+        .right-panel {
+            background-color: var(--bg-secondary);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Section Headers */
+        .section-header {
+            padding-bottom: 0.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            line-height: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: rgb(255 255 255);
+        }
+        
+        /* Status Indicators */
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(32, 32, 32, 0.5);
+        }
+        
+        .status-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            letter-spacing: 0.05em;
+        }
+        
+        .status-value {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--cyan);
+        }
+        
+        /* Control Button */
+        .control-button {
+            background: linear-gradient(135deg, var(--blue-accent), var(--purple-accent));
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            margin: 20px;
+        }
+        
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(146, 48, 170, 0.3);
+        }
+        
+        .control-button:active {
+            transform: translateY(0);
+        }
+        
+        .control-button.active {
+            background: var(--cyan);
+            box-shadow: 0 0 30px rgba(7, 182, 218, 0.5);
+        }
+        
+        /* Audio Visualization Bars */
+        .audio-bars {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            height: 40px;
+            margin: 20px 0;
+        }
+        
+        .audio-bar {
+            width: 3px;
+            background: var(--cyan);
+            border-radius: 2px;
+            transition: height 0.1s ease;
+        }
+        
+        .audio-bar:nth-child(1) { height: 10px; }
+        .audio-bar:nth-child(2) { height: 20px; }
+        .audio-bar:nth-child(3) { height: 15px; }
+        .audio-bar:nth-child(4) { height: 25px; }
+        .audio-bar:nth-child(5) { height: 18px; }
+        
+        .audio-bars.active .audio-bar {
+            animation: wave 0.8s ease-in-out infinite;
+        }
+        
+        .audio-bars.active .audio-bar:nth-child(1) { animation-delay: 0s; }
+        .audio-bars.active .audio-bar:nth-child(2) { animation-delay: 0.1s; }
+        .audio-bars.active .audio-bar:nth-child(3) { animation-delay: 0.2s; }
+        .audio-bars.active .audio-bar:nth-child(4) { animation-delay: 0.3s; }
+        .audio-bars.active .audio-bar:nth-child(5) { animation-delay: 0.4s; }
+        
+        @keyframes wave {
+            0%, 100% { height: 10px; }
+            50% { height: 30px; }
+        }
+        
+        /* Transcription Area */
+        .transcription-area {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            font-size: 13px;
             line-height: 1.6;
+            color: var(--text-secondary);
+        }
+        
+        .transcription-label {
+            padding-bottom: 0.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            line-height: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: rgb(255 255 255);
+        }
+        
+        .agent-label {
+            color: var(--cyan);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+        
+        .user-label {
+            color: var(--text-tertiary);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+        
+        /* Message Entry */
+        .message-entry {
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(32, 32, 32, 0.3);
+        }
+        
+        /* Hidden elements */
+        #audioPlayer {
+            display: none;
         }
         
         /* Responsive adjustments */
-        @media (min-width: 768px) {
-            .main-container {
-                max-width: 1000px;
+        @media (max-width: 1400px) {
+            .main-layout {
+                grid-template-columns: 250px 1fr 300px;
             }
             
-            #chatContainer {
+            #sphereContainer {
+                width: 500px;
                 height: 500px;
             }
         }
+        
+        @media (max-width: 1200px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+            }
+            
+            .left-panel {
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                padding: 16px;
+            }
+            
+            .right-panel {
+                border-left: none;
+                border-top: 1px solid var(--border-color);
+            }
+            
+            #sphereContainer {
+                width: 400px;
+                height: 400px;
+            }
+        }
+        
+        /* Loading animation */
+        .thinking-indicator {
+            display: inline-block;
+            color: var(--cyan);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .thinking-indicator::after {
+            content: '...';
+            animation: thinking 1.5s infinite;
+        }
+        
+        @keyframes thinking {
+            0% { content: '.'; }
+            33% { content: '..'; }
+            66% { content: '...'; }
+        }
     </style>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen antialiased flex items-center">
-    <!-- Background pattern -->
-    <div class="fixed inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-900 via-gray-950 to-gray-950 opacity-70"></div>
+<body>
     <!-- Toast Container -->
     <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
     
-    <!-- Main Container -->
-    <div class="main-container mx-auto px-4 py-6 relative z-10">
-        <!-- Header -->
-        <header class="text-center mb-8 relative z-10">
-            <h1 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                AI Voice Chat
-            </h1>
-            <p class="text-gray-500 text-sm mt-1">Speak with an AI assistant</p>
-        </header>
-        
-        <!-- Sphere Animation Placeholder -->
-        <div id="sphereContainer" class="mb-8 flex justify-center relative z-0">
-            <div class="w-64 h-64 md:w-80 md:h-80 border-2 border-red-500 bg-gray-900/50">
-                <!-- This is where the sphere animation will go -->
-                <div class="flex items-center justify-center h-full">
-                    <span class="text-gray-400 text-sm">Sphere Animation Area</span>
+    <!-- Main Layout -->
+    <div class="main-layout">
+        <!-- Left Panel - Stats -->
+        <div class="left-panel">
+            <div class="section-header">AGENT CONFIGURATION</div>
+            
+            <div class="status-item">
+                <span class="status-label">VAD</span>
+                <span class="status-value text-glow">SILERO</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="status-label">SPEECH-TO-TEXT MODEL</span>
+                <span class="status-value">DEEPGRAM</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="status-label">LLM MODEL</span>
+                <span class="status-value">NOVA-3</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="status-label">TEXT-TO-SPEECH MODEL</span>
+                <span class="status-value">OPENAI</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="status-label">VOICE</span>
+                <span class="status-value text-glow text-glow-subtle">GPT-4O-MINI</span>
+            </div>
+            
+            <div style="margin-top: 40px;">
+                <div class="section-header">ENHANCEMENTS</div>
+                
+                <div class="status-item">
+                    <span class="status-label">TURN DETECTION</span>
+                    <span class="status-value text-glow">ELEVEN LABS</span>
+                </div>
+                
+                <div class="status-item">
+                    <span class="status-label">NOISE CANCELLATION</span>
+                    <span class="status-value text-glow-subtle">ELEVEN TURBO V2.5</span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 40px;">
+                <div class="section-header">LATENCY</div>
+                
+                <div class="status-item">
+                    <span class="status-label">SPEECH-TO-TEXT</span>
+                    <span class="status-value" id="sttLatency">-</span>
+                </div>
+                
+                <div class="status-item">
+                    <span class="status-label">END OF TURN</span>
+                    <span class="status-value" id="eotLatency">324MS</span>
+                </div>
+                
+                <div class="status-item">
+                    <span class="status-label">LLM</span>
+                    <span class="status-value" id="llmLatency">2670MS</span>
+                </div>
+                
+                <div class="status-item">
+                    <span class="status-label">TEXT-TO-SPEECH</span>
+                    <span class="status-value" id="ttsLatency">391MS</span>
+                </div>
+                
+                <div class="status-item">
+                    <span class="status-label">OVERALL</span>
+                    <span class="status-value text-glow" id="overallLatency">533MS</span>
                 </div>
             </div>
         </div>
         
-        <!-- Chat Section -->
-        <section class="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-gray-700 transition-colors">
-            <!-- Header with controls -->
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-semibold flex items-center gap-2">
-                    <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
-                        </path>
-                    </svg>
-                    <span>Chat</span>
-                </h2>
-                <div class="flex items-center gap-2">
-                    <!-- Mode Toggle -->
-                    <label class="flex items-center gap-2 text-sm">
-                        <input type="checkbox" id="chatModeToggle" checked class="rounded">
-                        <span class="text-gray-400">AI Chat</span>
-                    </label>
-                    <!-- Listening Button -->
-                    <button id="startTranscriptionBtn" 
-                            class="px-3 py-1.5 rounded-md font-medium text-sm transition-all duration-200 flex items-center gap-1.5
-                                   bg-blue-500 hover:bg-blue-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                            aria-label="Toggle transcription">
-                        <svg class="w-4 h-4" id="transcriptionIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z">
-                            </path>
-                        </svg>
-                        <span id="transcriptionBtnText">Start</span>
-                    </button>
+        <!-- Center - Sphere -->
+        <div class="center-area">
+            <div id="sphereContainer">
+                <!-- Sphere animation will go here -->
+                <div style="width: 100%; height: 100%; border: 2px solid var(--border-color); display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); font-size: 14px;">
+                    SPHERE ANIMATION
                 </div>
             </div>
             
-            <!-- Status Display -->
-            <div class="mb-3">
-                <div class="flex items-center gap-2">
-                    <div id="transcriptionStatusDot" 
-                         class="w-2 h-2 rounded-full bg-gray-600 transition-colors duration-300"></div>
-                    <div id="transcriptionStatus" 
-                         class="text-sm font-medium text-gray-500">
-                        Ready
-                    </div>
-                </div>
+            <!-- Audio Visualization -->
+            <div class="audio-bars" id="audioVisualization" style="position: absolute; bottom: 60px;">
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
             </div>
             
-            <!-- Chat Messages Display -->
-            <div id="chatContainer" 
-                 class="relative bg-gray-800/50 rounded-xl p-4 overflow-y-auto border border-gray-700/50">
-                <!-- Empty State -->
-                <div id="chatEmpty" class="flex flex-col items-center justify-center h-full">
-                    <svg class="w-12 h-12 text-gray-700 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
-                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
-                        </path>
-                    </svg>
-                    <p class="text-gray-500 text-sm">Start speaking to begin conversation</p>
-                    <p class="text-gray-600 text-xs mt-1">AI will respond with voice</p>
-                </div>
-                
-                <!-- Chat Messages -->
-                <div id="chatMessages" class="hidden space-y-3">
-                    <!-- Messages will be inserted here -->
-                </div>
-                
-                <!-- Transcription Only Display (when chat mode is off) -->
-                <div id="transcriptionOnlyContainer" class="hidden">
-                    <p id="transcriptionText" class="text-gray-200 leading-relaxed whitespace-pre-wrap"></p>
-                    <span id="transcriptionCursor" 
-                          class="inline-block w-0.5 h-5 bg-blue-500 animate-pulse ml-1 align-middle hidden"></span>
-                </div>
-                
-                <!-- Speaking Indicator -->
-                <div id="speakingIndicator" 
-                     class="absolute bottom-4 right-4 hidden animate-fade-in">
-                    <div class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 rounded-full">
-                        <div class="flex gap-1">
-                            <div class="w-1 h-3 bg-blue-500 rounded-full animate-wave-1"></div>
-                            <div class="w-1 h-3 bg-blue-500 rounded-full animate-wave-2"></div>
-                            <div class="w-1 h-3 bg-blue-500 rounded-full animate-wave-3"></div>
-                        </div>
-                        <span class="text-xs font-medium text-blue-400">Listening</span>
-                    </div>
-                </div>
-                
-                <!-- AI Thinking Indicator -->
-                <div id="aiThinkingIndicator" class="hidden">
-                    <div class="flex items-center gap-2 text-gray-400 text-sm">
-                        <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                            </path>
-                        </svg>
-                        <span class="typing-dots">AI is thinking</span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Clear Button -->
-            <div class="mt-3 flex justify-end">
-                <button id="clearChatBtn" 
-                        class="px-3 py-1 text-sm text-gray-500 hover:text-gray-300 transition-colors"
-                        style="display: none;">
-                    Clear chat
-                </button>
-            </div>
-        </section>
+            <!-- Control Button -->
+            <button id="startTranscriptionBtn" class="control-button" style="position: absolute; bottom: 100px;">
+                START LISTENING
+            </button>
+        </div>
         
-        <!-- Audio Player (hidden) -->
-        <audio id="audioPlayer" class="hidden"></audio>
+        <!-- Right Panel - Transcription -->
+        <div class="right-panel">
+            <div class="transcription-area">
+                <div class="transcription-label">TRANSCRIPTION</div>
+                <div id="transcriptionContent">
+                    <!-- Messages will appear here -->
+                    <div class="message-entry" style="color: var(--text-tertiary); font-style: italic;">
+                        Click "Start Listening" to begin conversation...
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-
+    
+    <!-- Hidden Audio Player -->
+    <audio id="audioPlayer"></audio>
+    
+    <!-- Load UI adapter first -->
+    <script src="/static/js/ui-adapter.js"></script>
+    
     <!-- Load main application module -->
     <script type="module" src="/static/js/main.js"></script>
 </body>
