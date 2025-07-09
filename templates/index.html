@@ -71,6 +71,35 @@
         #chatContainer::-webkit-scrollbar-thumb:hover {
             background: rgba(156, 163, 175, 0.5);
         }
+        
+        /* Custom container sizing */
+        .main-container {
+            max-width: 900px;
+            width: 95%;
+        }
+        
+        /* Larger chat container */
+        #chatContainer {
+            height: 450px;
+            max-height: 60vh;
+        }
+        
+        /* Larger font sizes */
+        .chat-message {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        /* Responsive adjustments */
+        @media (min-width: 768px) {
+            .main-container {
+                max-width: 1000px;
+            }
+            
+            #chatContainer {
+                height: 500px;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen antialiased flex items-center">
@@ -80,7 +109,7 @@
     <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
     
     <!-- Main Container -->
-    <div class="w-full max-w-md mx-auto px-4 py-6 relative z-10">
+    <div class="main-container mx-auto px-4 py-6 relative z-10">
         <!-- Header -->
         <header class="text-center mb-5">
             <h1 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
@@ -136,7 +165,7 @@
             
             <!-- Chat Messages Display -->
             <div id="chatContainer" 
-                 class="relative bg-gray-800/50 rounded-xl p-4 h-[350px] overflow-y-auto border border-gray-700/50">
+                 class="relative bg-gray-800/50 rounded-xl p-4 overflow-y-auto border border-gray-700/50">
                 <!-- Empty State -->
                 <div id="chatEmpty" class="flex flex-col items-center justify-center h-full">
                     <svg class="w-12 h-12 text-gray-700 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

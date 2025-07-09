@@ -343,24 +343,29 @@ export class UIController {
     messageDiv.className = `chat-message flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
     
     const bubble = document.createElement('div');
-    bubble.className = `max-w-[80%] rounded-lg px-3 py-2 ${
+    bubble.className = `max-w-[80%] rounded-lg px-4 py-3 ${
       role === 'user' 
         ? 'bg-blue-500/20 text-blue-100 border border-blue-500/30' 
         : 'bg-gray-700/50 text-gray-100 border border-gray-600/30'
     }`;
     
     const textEl = document.createElement('p');
-    textEl.className = 'text-sm leading-relaxed';
+    textEl.className = 'text-base leading-relaxed';
     textEl.textContent = text;
     
     bubble.appendChild(textEl);
     messageDiv.appendChild(bubble);
     messagesEl.appendChild(messageDiv);
     
-    // Scroll to bottom
+    // Smooth scroll to bottom with a slight delay for animation
     const container = this.elements.chatContainer;
     if (container) {
-      container.scrollTop = container.scrollHeight;
+      requestAnimationFrame(() => {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        });
+      });
     }
   }
 
@@ -379,10 +384,15 @@ export class UIController {
       indicator.classList.remove('hidden');
       messagesEl.appendChild(indicator);
       
-      // Scroll to bottom
+      // Smooth scroll to bottom
       const container = this.elements.chatContainer;
       if (container) {
-        container.scrollTop = container.scrollHeight;
+        requestAnimationFrame(() => {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+          });
+        });
       }
     }
   }
