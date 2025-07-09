@@ -64,7 +64,7 @@ class AIService:
                         required.append(param_name)
             
             function_declarations.append({
-                "name": tool['id'],
+                "name": tool.get('tool_id', tool.get('id')),  # Handle both 'tool_id' and 'id'
                 "description": tool.get('description', ''),
                 "parameters": {
                     "type": "object",
