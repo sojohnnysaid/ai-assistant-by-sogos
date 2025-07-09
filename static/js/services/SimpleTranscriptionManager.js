@@ -8,6 +8,7 @@ export class SimpleTranscriptionManager {
     this.eventBus = dependencies.eventBus;
     
     this.isActive = false;
+    this.isRunning = false;
     this.isTranscribing = false;
     this.isPaused = false;
     this.unsubscribers = [];
@@ -76,8 +77,8 @@ export class SimpleTranscriptionManager {
    * Start transcription
    */
   async start() {
-    if (this.isActive) {
-      console.log('[SimpleTranscriptionManager] Already active');
+    if (this.isRunning) {
+      console.log('[SimpleTranscriptionManager] Already running');
       return;
     }
     
@@ -100,6 +101,7 @@ export class SimpleTranscriptionManager {
       }
       
       this.isActive = true;
+      this.isRunning = true;
       
       // Update status
       this.eventBus.emit('transcription:started');
@@ -124,8 +126,8 @@ export class SimpleTranscriptionManager {
    * Stop transcription
    */
   async stop() {
-    if (!this.isActive) {
-      console.log('[SimpleTranscriptionManager] Not active');
+    if (!this.isRunning) {
+      console.log('[SimpleTranscriptionManager] Not running');
       return;
     }
     
@@ -138,6 +140,7 @@ export class SimpleTranscriptionManager {
       }
       
       this.isActive = false;
+      this.isRunning = false;
       this.isTranscribing = false;
       
       // Update status

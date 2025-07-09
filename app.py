@@ -57,7 +57,7 @@ except Exception as e:
     elevenlabs = None
 
 # Gemini model configuration
-GEMINI_MODEL = "gemini-2.5-flash-lite-preview-06-17"
+GEMINI_MODEL = "gemini-2.0-flash-exp"  # Experimental model optimized for speed
 
 # ElevenLabs voice configuration
 VOICE_ID = "G17SuINrv2H9FC6nvetn"  # Updated voice ID
@@ -124,6 +124,11 @@ def chat():
             generate_config = types.GenerateContentConfig(
                 thinking_config=types.ThinkingConfig(thinking_budget=0),
                 response_mime_type="text/plain",
+                temperature=0.7,  # Balance between creativity and speed
+                max_output_tokens=100,  # Limit response length for faster generation
+                candidate_count=1,  # Single candidate for faster response
+                stop_sequences=[],  # No stop sequences for natural completion
+                system_instruction="You are a helpful, concise voice assistant. Respond in 1-2 short sentences. Be conversational and natural.",
             )
             
             # Collect the full response
@@ -196,6 +201,9 @@ def synthesize():
 @app.route('/chat-with-voice', methods=['POST'])
 def chat_with_voice():
     """Combined endpoint: AI chat + text-to-speech"""
+    import time
+    request_start = time.time()
+    
     try:
         print(f"\n=== /chat-with-voice request ===")
         print(f"Gemini client available: {gemini_client is not None}")
@@ -237,17 +245,31 @@ def chat_with_voice():
             generate_config = types.GenerateContentConfig(
                 thinking_config=types.ThinkingConfig(thinking_budget=0),
                 response_mime_type="text/plain",
+                temperature=0.7,  # Balance between creativity and speed
+                max_output_tokens=100,  # Limit response length for faster generation
+                candidate_count=1,  # Single candidate for faster response
+                stop_sequences=[],  # No stop sequences for natural completion
+                system_instruction="You are a helpful, concise voice assistant. Respond in 1-2 short sentences. Be conversational and natural.",
             )
             
-            # Collect the full response
+            # Collect the full response with timing
+            ai_start_time = time.time()
             ai_response = ""
+            first_token_time = None
+            
             for chunk in gemini_client.models.generate_content_stream(
                 model=GEMINI_MODEL,
                 contents=contents,
                 config=generate_config,
             ):
                 if chunk.text:
+                    if first_token_time is None:
+                        first_token_time = time.time()
+                        print(f"Time to first token: {(first_token_time - ai_start_time)*1000:.0f}ms")
                     ai_response += chunk.text
+            
+            if first_token_time:
+                print(f"Time to complete AI response: {(time.time() - ai_start_time)*1000:.0f}ms")
         else:
             # Fallback response when Gemini is not configured
             ai_response = f"I heard you say: '{user_message}'. However, the AI service is not configured. Please set the GOOGLE_API_KEY or GEMINI_API_KEY environment variable."
@@ -322,6 +344,10 @@ def chat_with_voice():
         
         # Determine audio format based on what was used
         audio_format = 'pcm' if audio_base64 and method_used == 'convert' else 'mp3'
+        
+        # Log total request time
+        total_time = (time.time() - request_start) * 1000
+        print(f"Total request time: {total_time:.0f}ms")
         
         return jsonify({
             'response': ai_response,

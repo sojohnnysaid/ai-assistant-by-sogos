@@ -59,21 +59,6 @@ class VoiceChatApp {
   async initialize() {
     console.log('Initializing voice chat app...');
     
-    // Warm up audio context for faster first playback
-    try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      await audioContext.resume();
-      // Create a silent buffer to prime the audio system
-      const buffer = audioContext.createBuffer(1, 1, 22050);
-      const source = audioContext.createBufferSource();
-      source.buffer = buffer;
-      source.connect(audioContext.destination);
-      source.start();
-      console.log('Audio context warmed up');
-    } catch (e) {
-      console.warn('Could not warm up audio context:', e);
-    }
-    
     // Set up event listeners
     this.setupEventListeners();
     
@@ -84,6 +69,28 @@ class VoiceChatApp {
     this.updateUIMode();
     
     console.log('Voice chat app initialized');
+  }
+  
+  /**
+   * Warm up audio context (call after user interaction)
+   */
+  async warmUpAudioContext() {
+    if (this.audioContextWarmedUp) return;
+    
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      await audioContext.resume();
+      // Create a silent buffer to prime the audio system
+      const buffer = audioContext.createBuffer(1, 1, 22050);
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioContext.destination);
+      source.start();
+      console.log('Audio context warmed up');
+      this.audioContextWarmedUp = true;
+    } catch (e) {
+      console.warn('Could not warm up audio context:', e);
+    }
   }
 
   /**
@@ -108,26 +115,31 @@ class VoiceChatApp {
     // Transcription button
     const transcriptionBtn = this.ui.elements.startTranscriptionBtn;
     if (transcriptionBtn) {
+      console.log('[VoiceChatApp] Setting up transcription button listener');
       transcriptionBtn.addEventListener('click', () => {
+        console.log('[VoiceChatApp] Transcription button clicked');
         const isActive = this.state.get('transcription.isActive');
+        console.log('[VoiceChatApp] Current active state:', isActive);
         if (isActive) {
           this.stopTranscription();
         } else {
           this.startTranscription();
         }
       });
+    } else {
+      console.error('[VoiceChatApp] Transcription button not found!');
     }
     
     // Clear button
     const clearBtn = this.ui.elements.clearChatBtn;
     if (clearBtn) {
-      clearBtn.addEventListener('click', this.clearChat);
+      clearBtn.addEventListener('click', () => this.clearChat());
     }
     
     // Chat mode toggle
     const chatToggle = this.ui.elements.chatModeToggle;
     if (chatToggle) {
-      chatToggle.addEventListener('change', this.handleChatModeToggle);
+      chatToggle.addEventListener('change', (e) => this.handleChatModeToggle(e));
     }
   }
 
@@ -256,8 +268,14 @@ class VoiceChatApp {
    */
   async startTranscription() {
     try {
+      console.log('[VoiceChatApp] Starting transcription...');
+      
+      // Warm up audio context on first user interaction
+      await this.warmUpAudioContext();
+      
       this.ui.updateTranscriptionButton('loading');
       await this.transcriptionManager.start();
+      console.log('[VoiceChatApp] Transcription started successfully');
     } catch (error) {
       console.error('Failed to start transcription:', error);
       this.ui.showError('Failed to start listening. Please check microphone permissions.');

@@ -49,6 +49,13 @@ async function initialize() {
         // Configure environment
         env.allowLocalModels = false;
         env.remoteURL = 'https://huggingface.co/';
+        
+        // Suppress ONNX Runtime warnings globally
+        if (globalThis.ort) {
+            globalThis.ort.env.logLevel = 'error';  // Only show errors
+            globalThis.ort.env.wasm.numThreads = 1;  // Single thread for consistency
+        }
+        
         console.log('[WhisperWorker] Environment configured');
         
         isInitialized = true;
