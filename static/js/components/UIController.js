@@ -114,12 +114,18 @@ export class UIController {
     
     const config = states[state] || states.idle;
     
-    button.className = `px-3 py-1.5 rounded-md font-medium text-sm transition-all duration-200 flex items-center gap-1.5 ${config.className} text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50`;
+    // Check if this is the startTranscriptionBtn and preserve its control-button class
+    if (button.id === 'startTranscriptionBtn') {
+        button.className = 'control-button';
+        button.textContent = config.text;
+    } else {
+        button.className = `px-3 py-1.5 rounded-md font-medium text-sm transition-all duration-200 flex items-center gap-1.5 ${config.className} text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50`;
+        if (text) text.textContent = config.text;
+    }
     button.disabled = config.disabled;
     
-    if (text) text.textContent = config.text;
-    
-    if (icon) {
+    // Skip icon handling for startTranscriptionBtn
+    if (icon && button.id !== 'startTranscriptionBtn') {
       if (state === 'loading') {
         icon.classList.add('animate-spin');
       } else {
