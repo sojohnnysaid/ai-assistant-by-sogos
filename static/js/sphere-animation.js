@@ -262,13 +262,47 @@ document.addEventListener('DOMContentLoaded', () => {
     if (container) {
         window.sphereAnimation = new SphereAnimation(container);
         
-        // Connect to audio visualization state
-        const originalUpdateButton = window.updateTranscriptionButton;
-        if (originalUpdateButton) {
-            window.updateTranscriptionButton = (isActive) => {
-                originalUpdateButton(isActive);
-                window.sphereAnimation.setListening(isActive);
-            };
-        }
+        // Connect to UI events after a delay to ensure app is loaded
+        setTimeout(() => {
+            // Listen for AI speaking events
+            if (window.app && window.app.eventBus) {
+                // Audio starts playing
+                window.app.eventBus.on('audio:playback:start', () => {
+                    console.log('[SphereAnimation] AI speaking started');
+                    window.sphereAnimation.setListening(true);
+                });
+                
+                // Audio stops playing
+                window.app.eventBus.on('audio:playback:end', () => {
+                    console.log('[SphereAnimation] AI speaking ended');
+                    window.sphereAnimation.setListening(false);
+                });
+                
+                // Audio paused
+                window.app.eventBus.on('audio:playback:paused', () => {
+                    console.log('[SphereAnimation] AI speaking paused');
+                    window.sphereAnimation.setListening(false);
+                });
+            }
+            
+            // Also listen for direct audio play events
+            const audioPlayer = document.getElementById('audioPlayer');
+            if (audioPlayer) {
+                audioPlayer.addEventListener('play', () => {
+                    console.log('[SphereAnimation] Audio play event');
+                    window.sphereAnimation.setListening(true);
+                });
+                
+                audioPlayer.addEventListener('ended', () => {
+                    console.log('[SphereAnimation] Audio ended event');
+                    window.sphereAnimation.setListening(false);
+                });
+                
+                audioPlayer.addEventListener('pause', () => {
+                    console.log('[SphereAnimation] Audio pause event');
+                    window.sphereAnimation.setListening(false);
+                });
+            }
+        }, 500);
     }
 });

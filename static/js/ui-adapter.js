@@ -79,15 +79,20 @@ class UIAdapter {
         // Create global update function that UI can use
         window.updateTranscriptionButton = (isActive) => {
             if (btn) {
-                if (isActive) {
+                if (isActive === 'loading') {
+                    btn.textContent = 'LOADING...';
+                    btn.disabled = true;
+                } else if (isActive === true || isActive === 'active') {
                     btn.textContent = 'STOP LISTENING';
                     btn.classList.add('active');
+                    btn.disabled = false;
                     if (this.elements.audioVisualization) {
                         this.elements.audioVisualization.classList.add('active');
                     }
                 } else {
                     btn.textContent = 'START LISTENING';
                     btn.classList.remove('active');
+                    btn.disabled = false;
                     if (this.elements.audioVisualization) {
                         this.elements.audioVisualization.classList.remove('active');
                     }
@@ -99,6 +104,21 @@ class UIAdapter {
                 this._originalUpdateButton(isActive);
             }
         };
+        
+        // Listen for transcription state changes after a delay
+        setTimeout(() => {
+            if (window.app && window.app.eventBus) {
+                window.app.eventBus.on('transcription:started', () => {
+                    console.log('[UIAdapter] Transcription started event');
+                    window.updateTranscriptionButton(true);
+                });
+                
+                window.app.eventBus.on('transcription:stopped', () => {
+                    console.log('[UIAdapter] Transcription stopped event');
+                    window.updateTranscriptionButton(false);
+                });
+            }
+        }, 500);
     }
 
     overrideUIControllerMethods() {
