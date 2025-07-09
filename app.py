@@ -6,11 +6,28 @@ from elevenlabs import VoiceSettings
 from elevenlabs.client import ElevenLabs
 from io import BytesIO
 import uuid
+import asyncio
+from functools import wraps
+
+from src.core.ai_service import AIService
+from src.core.tool_manager import ToolManager
 
 app = Flask(__name__)
 
 # Configure app
 app.config['SECRET_KEY'] = 'your-secret-key-here'
+
+def async_route(f):
+    """Decorator to handle async routes in Flask"""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(f(*args, **kwargs))
+        finally:
+            loop.close()
+    return wrapper
 
 # Initialize clients with error checking
 try:
@@ -56,6 +73,10 @@ except Exception as e:
     gemini_client = None
     elevenlabs = None
 
+# Initialize tool manager and AI service
+tool_manager = ToolManager()
+ai_service = AIService(tool_manager=tool_manager)
+
 # Gemini model configuration
 GEMINI_MODEL = "gemini-2.0-flash-exp"  # Experimental model optimized for speed
 
@@ -84,6 +105,10 @@ def api_status():
         'elevenlabs': {
             'configured': elevenlabs is not None,
             'api_key_present': bool(os.environ.get("ELEVENLABS_API_KEY"))
+        },
+        'tools': {
+            'enabled': tool_manager.is_enabled(),
+            'available_tools': tool_manager.get_available_tools()
         }
     })
 
@@ -199,7 +224,8 @@ def synthesize():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/chat-with-voice', methods=['POST'])
-def chat_with_voice():
+@async_route
+async def chat_with_voice():
     """Combined endpoint: AI chat + text-to-speech"""
     import time
     request_start = time.time()
@@ -222,58 +248,30 @@ def chat_with_voice():
         if not user_message:
             return jsonify({'error': 'No message provided'}), 400
         
-        # Build conversation context
-        contents = []
+        # Generate AI response using AI service (which includes tool support)
+        ai_start_time = time.time()
         
-        # Add chat history if provided
-        for msg in chat_history:
-            # Convert 'assistant' role to 'model' for Gemini API
-            role = 'model' if msg['role'] == 'assistant' else msg['role']
-            contents.append(types.Content(
-                role=role,
-                parts=[types.Part.from_text(text=msg['content'])]
-            ))
-        
-        # Add current user message
-        contents.append(types.Content(
-            role="user",
-            parts=[types.Part.from_text(text=user_message)]
-        ))
-        
-        # Generate AI response or use fallback
-        if gemini_client:
-            generate_config = types.GenerateContentConfig(
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
-                response_mime_type="text/plain",
-                temperature=0.7,  # Balance between creativity and speed
-                max_output_tokens=100,  # Limit response length for faster generation
-                candidate_count=1,  # Single candidate for faster response
-                stop_sequences=[],  # No stop sequences for natural completion
-                system_instruction="You are a helpful, concise voice assistant. Respond in 1-2 short sentences. Be conversational and natural.",
-            )
+        if ai_service.is_configured():
+            ai_result = await ai_service.generate_response(user_message, chat_history)
             
-            # Collect the full response with timing
-            ai_start_time = time.time()
-            ai_response = ""
-            first_token_time = None
-            
-            for chunk in gemini_client.models.generate_content_stream(
-                model=GEMINI_MODEL,
-                contents=contents,
-                config=generate_config,
-            ):
-                if chunk.text:
-                    if first_token_time is None:
-                        first_token_time = time.time()
-                        print(f"Time to first token: {(first_token_time - ai_start_time)*1000:.0f}ms")
-                    ai_response += chunk.text
-            
-            if first_token_time:
+            if ai_result['success']:
+                ai_response = ai_result['response']
+                tool_execution = ai_result.get('tool_execution')
                 print(f"Time to complete AI response: {(time.time() - ai_start_time)*1000:.0f}ms")
+                if tool_execution:
+                    print(f"Tool executed: {tool_execution}")
+            else:
+                ai_response = "I'm having trouble processing your request. Please try again."
+                tool_execution = None
         else:
             # Fallback response when Gemini is not configured
             ai_response = f"I heard you say: '{user_message}'. However, the AI service is not configured. Please set the GOOGLE_API_KEY or GEMINI_API_KEY environment variable."
+            tool_execution = None
         
+        # Initialize tool_execution if not set
+        if 'tool_execution' not in locals():
+            tool_execution = None
+            
         # Convert to speech or skip if not configured
         if elevenlabs:
             # Debug: Check what methods are available
@@ -349,13 +347,19 @@ def chat_with_voice():
         total_time = (time.time() - request_start) * 1000
         print(f"Total request time: {total_time:.0f}ms")
         
-        return jsonify({
+        response_data = {
             'response': ai_response,
             'audio': audio_base64,
             'audio_format': audio_format,
             'sample_rate': 16000 if audio_format == 'pcm' else 22050,
             'success': True
-        })
+        }
+        
+        # Add tool execution info if present
+        if tool_execution:
+            response_data['tool_execution'] = tool_execution
+            
+        return jsonify(response_data)
         
     except Exception as e:
         import traceback
