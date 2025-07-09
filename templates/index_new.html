@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Voice Assistant</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
+    <script>
+        // Configure ONNX Runtime to suppress warnings
+        if (typeof ort !== 'undefined') {
+            ort.env.logLevel = 'error';
+            ort.env.wasm.numThreads = 1;
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js"></script>
+    
+    <!-- Custom styles for new design -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
+        
+        :root {
+            --cyan: rgb(7, 182, 218);
+            --cyan-glow: #035c6d;
+            --bg-primary: #070707;
+            --bg-secondary: #131313;
+            --bg-tertiary: #1f1f1f;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --text-tertiary: #666666;
+            --border-color: #202020;
+            --purple-accent: #9230aa;
+            --blue-accent: #0b435f;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: var(--bg-primary);
+            color: var(--text-secondary);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+        }
+        
+        /* Glow text utility */
+        .text-glow {
+            text-shadow: 0 0 20px var(--cyan-glow);
+        }
+        
+        .text-glow-subtle {
+            text-shadow: 0 0 10px var(--cyan-glow);
+        }
+        
+        /* Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            height: 100vh;
+            gap: 0;
+        }
+        
+        /* Left Panel */
+        .left-panel {
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            padding: 24px;
+            overflow-y: auto;
+        }
+        
+        /* Center - Sphere Area */
+        .center-area {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(ellipse at center, rgba(11, 67, 95, 0.2) 0%, var(--bg-primary) 60%);
+        }
+        
+        #sphereContainer {
+            width: 600px;
+            height: 600px;
+            position: relative;
+        }
+        
+        /* Right Panel */
+        .right-panel {
+            background-color: var(--bg-secondary);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Section Headers */
+        .section-header {
+            padding-bottom: 0.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            line-height: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: rgb(255 255 255);
+        }
+        
+        /* Status Indicators */
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(32, 32, 32, 0.5);
+        }
+        
+        .status-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            letter-spacing: 0.05em;
+        }
+        
+        .status-value {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--cyan);
+        }
+        
+        /* Control Button */
+        .control-button {
+            background: linear-gradient(135deg, var(--blue-accent), var(--purple-accent));
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            margin: 20px;
+        }
+        
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(146, 48, 170, 0.3);
+        }
+        
+        .control-button:active {
+            transform: translateY(0);
+        }
+        
+        .control-button.active {
+            background: var(--cyan);
+            box-shadow: 0 0 30px rgba(7, 182, 218, 0.5);
+        }
+        
+        /* Audio Visualization Bars */
+        .audio-bars {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            height: 40px;
+            margin: 20px 0;
+        }
+        
+        .audio-bar {
+            width: 3px;
+            background: var(--cyan);
+            border-radius: 2px;
+            transition: height 0.1s ease;
+        }
+        
+        .audio-bar:nth-child(1) { height: 10px; }
+        .audio-bar:nth-child(2) { height: 20px; }
+        .audio-bar:nth-child(3) { height: 15px; }
+        .audio-bar:nth-child(4) { height: 25px; }
+        .audio-bar:nth-child(5) { height: 18px; }
+        
+        .audio-bars.active .audio-bar {
+            animation: wave 0.8s ease-in-out infinite;
+        }
+        
+        .audio-bars.active .audio-bar:nth-child(1) { animation-delay: 0s; }
+        .audio-bars.active .audio-bar:nth-child(2) { animation-delay: 0.1s; }
+        .audio-bars.active .audio-bar:nth-child(3) { animation-delay: 0.2s; }
+        .audio-bars.active .audio-bar:nth-child(4) { animation-delay: 0.3s; }
+        .audio-bars.active .audio-bar:nth-child(5) { animation-delay: 0.4s; }
+        
+        @keyframes wave {
+            0%, 100% { height: 10px; }
+            50% { height: 30px; }
+        }
+        
+        /* Transcription Area */
+        .transcription-area {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+        
+        .transcription-label {
+            padding-bottom: 0.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            line-height: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: rgb(255 255 255);
+        }
+        
+        .agent-label {
+            color: var(--cyan);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+        
+        .user-label {
+            color: var(--text-tertiary);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+        
+        /* Message Entry */
+        .message-entry {
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(32, 32, 32, 0.3);
+        }
+        
+        /* Hidden elements */
+        #audioPlayer {
+            display: none;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 1400px) {
+            .main-layout {
+                grid-template-columns: 250px 1fr 300px;
+            }
+            
+            #sphereContainer {
+                width: 500px;
+                height: 500px;
+            }
+        }
+        
+        @media (max-width: 1200px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+            }
+            
+            .left-panel {
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                padding: 16px;
+            }
+            
+            .right-panel {
+                border-left: none;
+                border-top: 1px solid var(--border-color);
+            }
+            
+            #sphereContainer {
+                width: 400px;
+                height: 400px;
+            }
+        }
+        
+        /* Loading animation */
+        .thinking-indicator {
+            display: inline-block;
+            color: var(--cyan);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .thinking-indicator::after {
+            content: '...';
+            animation: thinking 1.5s infinite;
+        }
+        
+        @keyframes thinking {
+            0% { content: '.'; }
+            33% { content: '..'; }
+            66% { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    
+    <!-- Main Layout -->
+    <div class="main-layout">
+        <!-- Left Panel - Stats -->
+        <div class="left-panel">
+            <div class="section-header">AGENT CONFIGURATION</div>
+            
+            <div class="status-item">
+                <span class="status-label">VAD</span>
+                <span class="status-value text-glow">SILERO</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="status-label">SPEECH-TO-TEXT MODEL</span>
+                <span class="status-value">DEEPGRAM</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="status-label">LLM MODEL</span>
+                <span class="status-value">NOVA-3</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="status-label">TEXT-TO-SPEECH MODEL</span>
+                <span class="status-value">OPENAI</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="status-label">VOICE</span>
+                <span class="status-value text-glow text-glow-subtle">GPT-4O-MINI</span>
+            </div>
+            
+            <div style="margin-top: 40px;">
+                <div class="section-header">ENHANCEMENTS</div>
+                
+                <div class="status-item">
+                    <span class="status-label">TURN DETECTION</span>
+                    <span class="status-value text-glow">ELEVEN LABS</span>
+                </div>
+                
+                <div class="status-item">
+                    <span class="status-label">NOISE CANCELLATION</span>
+                    <span class="status-value text-glow-subtle">ELEVEN TURBO V2.5</span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 40px;">
+                <div class="section-header">LATENCY</div>
+                
+                <div class="status-item">
+                    <span class="status-label">SPEECH-TO-TEXT</span>
+                    <span class="status-value" id="sttLatency">-</span>
+                </div>
+                
+                <div class="status-item">
+                    <span class="status-label">END OF TURN</span>
+                    <span class="status-value" id="eotLatency">324MS</span>
+                </div>
+                
+                <div class="status-item">
+                    <span class="status-label">LLM</span>
+                    <span class="status-value" id="llmLatency">2670MS</span>
+                </div>
+                
+                <div class="status-item">
+                    <span class="status-label">TEXT-TO-SPEECH</span>
+                    <span class="status-value" id="ttsLatency">391MS</span>
+                </div>
+                
+                <div class="status-item">
+                    <span class="status-label">OVERALL</span>
+                    <span class="status-value text-glow" id="overallLatency">533MS</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Center - Sphere -->
+        <div class="center-area">
+            <div id="sphereContainer">
+                <!-- Sphere animation will go here -->
+                <div style="width: 100%; height: 100%; border: 2px solid var(--border-color); display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); font-size: 14px;">
+                    SPHERE ANIMATION
+                </div>
+            </div>
+            
+            <!-- Audio Visualization -->
+            <div class="audio-bars" id="audioVisualization" style="position: absolute; bottom: 60px;">
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+            </div>
+            
+            <!-- Control Button -->
+            <button id="startTranscriptionBtn" class="control-button" style="position: absolute; bottom: 100px;">
+                START LISTENING
+            </button>
+        </div>
+        
+        <!-- Right Panel - Transcription -->
+        <div class="right-panel">
+            <div class="transcription-area">
+                <div class="transcription-label">TRANSCRIPTION</div>
+                <div id="transcriptionContent">
+                    <!-- Messages will appear here -->
+                    <div class="message-entry" style="color: var(--text-tertiary); font-style: italic;">
+                        Click "Start Listening" to begin conversation...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Hidden Audio Player -->
+    <audio id="audioPlayer"></audio>
+    
+    <!-- Load UI adapter first -->
+    <script src="/static/js/ui-adapter.js"></script>
+    
+    <!-- Load main application module -->
+    <script type="module" src="/static/js/main.js"></script>
+</body>
+</html>
