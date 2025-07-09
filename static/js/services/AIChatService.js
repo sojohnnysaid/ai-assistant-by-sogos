@@ -54,7 +54,8 @@ export class AIChatService {
         return {
           text: data.response,
           audio: data.audio,
-          audioFormat: data.audio_format || 'mp3'
+          audioFormat: data.audio_format || 'mp3',
+          sampleRate: data.sample_rate || 22050
         };
       } else {
         throw new Error(data.error || 'Failed to get AI response');

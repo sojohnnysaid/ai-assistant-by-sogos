@@ -436,11 +436,57 @@ export class UIController {
   }
 
   /**
+   * Create WAV header for PCM data
+   * @param {number} pcmLength - Length of PCM data in bytes
+   * @param {number} sampleRate - Sample rate
+   * @returns {ArrayBuffer} WAV header
+   */
+  createWavHeader(pcmLength, sampleRate = 16000) {
+    const header = new ArrayBuffer(44);
+    const view = new DataView(header);
+    
+    // RIFF header
+    const encoder = new TextEncoder();
+    view.setUint8(0, encoder.encode('R')[0]);
+    view.setUint8(1, encoder.encode('I')[0]);
+    view.setUint8(2, encoder.encode('F')[0]);
+    view.setUint8(3, encoder.encode('F')[0]);
+    view.setUint32(4, 36 + pcmLength, true);
+    view.setUint8(8, encoder.encode('W')[0]);
+    view.setUint8(9, encoder.encode('A')[0]);
+    view.setUint8(10, encoder.encode('V')[0]);
+    view.setUint8(11, encoder.encode('E')[0]);
+    
+    // fmt chunk
+    view.setUint8(12, encoder.encode('f')[0]);
+    view.setUint8(13, encoder.encode('m')[0]);
+    view.setUint8(14, encoder.encode('t')[0]);
+    view.setUint8(15, encoder.encode(' ')[0]);
+    view.setUint32(16, 16, true); // fmt chunk size
+    view.setUint16(20, 1, true); // audio format (1 = PCM)
+    view.setUint16(22, 1, true); // channels
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true); // byte rate
+    view.setUint16(32, 2, true); // block align
+    view.setUint16(34, 16, true); // bits per sample
+    
+    // data chunk
+    view.setUint8(36, encoder.encode('d')[0]);
+    view.setUint8(37, encoder.encode('a')[0]);
+    view.setUint8(38, encoder.encode('t')[0]);
+    view.setUint8(39, encoder.encode('a')[0]);
+    view.setUint32(40, pcmLength, true);
+    
+    return header;
+  }
+
+  /**
    * Play audio from base64
    * @param {string} audioBase64 - Base64 encoded audio
    * @param {string} format - Audio format (default: mp3)
+   * @param {number} sampleRate - Sample rate for PCM (default: 16000)
    */
-  async playAudio(audioBase64, format = 'mp3') {
+  async playAudio(audioBase64, format = 'mp3', sampleRate = 16000) {
     const player = this.elements.audioPlayer;
     if (!player) return;
     
@@ -455,7 +501,18 @@ export class UIController {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
       const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: `audio/${format}` });
+      
+      let blob;
+      if (format === 'pcm') {
+        // For PCM, we need to add WAV header
+        const wavHeader = this.createWavHeader(byteArray.length, sampleRate);
+        const wavBuffer = new Uint8Array(wavHeader.byteLength + byteArray.length);
+        wavBuffer.set(new Uint8Array(wavHeader), 0);
+        wavBuffer.set(byteArray, wavHeader.byteLength);
+        blob = new Blob([wavBuffer], { type: 'audio/wav' });
+      } else {
+        blob = new Blob([byteArray], { type: `audio/${format}` });
+      }
       
       // Create blob URL and play
       const audioUrl = URL.createObjectURL(blob);

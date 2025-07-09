@@ -41,11 +41,12 @@ export class SimpleVAD {
           this.emit('misfire');
         },
         
-        // Use default thresholds for better detection
-        positiveSpeechThreshold: 0.5,
-        negativeSpeechThreshold: 0.35,
-        minSpeechFrames: 3,
-        preSpeechPadFrames: 10
+        // Optimized thresholds for lower latency
+        positiveSpeechThreshold: 0.6,    // Increased for faster detection
+        negativeSpeechThreshold: 0.4,     // Increased for faster end detection
+        minSpeechFrames: 2,               // Reduced from 3
+        preSpeechPadFrames: 5,            // Reduced from 10
+        redemptionFrames: 5               // Reduced for faster response
       });
       
       console.log('[SimpleVAD] VAD initialized successfully');

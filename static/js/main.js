@@ -59,6 +59,21 @@ class VoiceChatApp {
   async initialize() {
     console.log('Initializing voice chat app...');
     
+    // Warm up audio context for faster first playback
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      await audioContext.resume();
+      // Create a silent buffer to prime the audio system
+      const buffer = audioContext.createBuffer(1, 1, 22050);
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioContext.destination);
+      source.start();
+      console.log('Audio context warmed up');
+    } catch (e) {
+      console.warn('Could not warm up audio context:', e);
+    }
+    
     // Set up event listeners
     this.setupEventListeners();
     
@@ -194,7 +209,7 @@ class VoiceChatApp {
       // Play AI voice response if available
       if (response.audio) {
         try {
-          await this.ui.playAudio(response.audio, response.audioFormat);
+          await this.ui.playAudio(response.audio, response.audioFormat, response.sampleRate);
         } catch (audioError) {
           console.warn('Could not play audio:', audioError);
           // Continue without audio - text is already shown

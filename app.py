@@ -60,7 +60,7 @@ except Exception as e:
 GEMINI_MODEL = "gemini-2.5-flash-lite-preview-06-17"
 
 # ElevenLabs voice configuration
-VOICE_ID = "pNInz6obpgDQGcFmaJgB"  # Adam pre-made voice
+VOICE_ID = "G17SuINrv2H9FC6nvetn"  # Updated voice ID
 VOICE_MODEL = "eleven_turbo_v2_5"  # Use turbo model for low latency
 
 @app.route('/')
@@ -266,12 +266,13 @@ def chat_with_voice():
                 method_used = 'convert'
                 audio_response = elevenlabs.text_to_speech.convert(
                     voice_id=VOICE_ID,
-                    output_format="mp3_22050_32",
+                    output_format="pcm_16000",  # Use PCM for lower latency
                     text=ai_response,
                     model_id=VOICE_MODEL,
+                    optimize_streaming_latency=3,  # Optimize for lowest latency
                     voice_settings=VoiceSettings(
-                        stability=0.5,
-                        similarity_boost=0.8,
+                        stability=0.4,  # Slightly reduced for faster generation
+                        similarity_boost=0.75,
                         style=0.0,
                         use_speaker_boost=True,
                     ),
@@ -319,10 +320,14 @@ def chat_with_voice():
             # No audio when ElevenLabs is not configured
             audio_base64 = None
         
+        # Determine audio format based on what was used
+        audio_format = 'pcm' if audio_base64 and method_used == 'convert' else 'mp3'
+        
         return jsonify({
             'response': ai_response,
             'audio': audio_base64,
-            'audio_format': 'mp3' if audio_base64 else None,
+            'audio_format': audio_format,
+            'sample_rate': 16000 if audio_format == 'pcm' else 22050,
             'success': True
         })
         

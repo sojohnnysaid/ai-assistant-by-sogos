@@ -95,10 +95,12 @@ async function loadModel() {
         
         modelInstance = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', {
             quantized: true,
-            // Add session options to suppress ONNX warnings
-            session_options: {
-                logSeverityLevel: 3, // Only show errors, not warnings
+            // Session options to suppress ONNX warnings
+            sessionOptions: {
+                logSeverityLevel: 3, // 0=Verbose, 1=Info, 2=Warning, 3=Error, 4=Fatal
+                graphOptimizationLevel: 'all' // Keep optimizations for performance
             },
+            device: 'cpu',
             progress_callback: (progress) => {
                 console.log('[WhisperWorker] Model loading progress:', progress);
                 self.postMessage({
@@ -225,3 +227,14 @@ self.postMessage({
     status: 'ready',
     message: 'Worker ready'
 });
+
+// Preload model immediately for faster first transcription
+setTimeout(async () => {
+    console.log('[WhisperWorker] Preloading model...');
+    try {
+        await loadModel();
+        console.log('[WhisperWorker] Model preloaded successfully');
+    } catch (error) {
+        console.warn('[WhisperWorker] Model preload failed:', error);
+    }
+}, 100);
