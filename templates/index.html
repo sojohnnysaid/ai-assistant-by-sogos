@@ -169,7 +169,6 @@
             text-transform: uppercase;
             letter-spacing: 0.1em;
             cursor: pointer;
-            transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
             margin: 20px;
@@ -182,6 +181,10 @@
         .control-button.active {
             background: var(--cyan);
             box-shadow: 0 0 30px rgba(7, 182, 218, 0.5);
+        }
+        
+        .control-button:focus {
+            outline: none;
         }
         
         /* Audio Visualization Bars */
