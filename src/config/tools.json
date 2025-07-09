@@ -40,7 +40,7 @@
         }
       },
       "permissions": {
-        "require_confirmation": true,
+        "require_confirmation": false,
         "allowed_paths": ["~/Desktop"],
         "max_file_size": 1048576
       },
