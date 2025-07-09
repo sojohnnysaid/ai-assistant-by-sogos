@@ -574,6 +574,20 @@ export class UIController {
       this.audioWasPaused = true;
     }
   }
+
+  /**
+   * Stop current audio playback completely
+   */
+  stopAudio() {
+    if (this.currentAudioPlayer) {
+      console.log('[UIController] Stopping audio playback');
+      this.currentAudioPlayer.pause();
+      this.currentAudioPlayer.currentTime = 0;
+      this.currentAudioPlayer = null;
+      this.audioWasPaused = false;
+      this.eventBus.emit('audio:playback:stopped');
+    }
+  }
   
   /**
    * Resume audio playback if it was paused
