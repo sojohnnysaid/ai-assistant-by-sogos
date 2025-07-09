@@ -82,7 +82,7 @@ GEMINI_MODEL = "gemini-2.0-flash-exp"  # Experimental model optimized for speed
 
 # ElevenLabs voice configuration
 VOICE_ID = "G17SuINrv2H9FC6nvetn"  # Updated voice ID
-VOICE_MODEL = "eleven_flash_v2_5"  # Use flash model for lowest latency
+VOICE_MODEL = "eleven_turbo_v2_5"  # Use turbo model for low latency
 
 @app.route('/')
 def index():
@@ -195,8 +195,8 @@ def synthesize():
             text=text,
             model_id=VOICE_MODEL,
             voice_settings=VoiceSettings(
-                stability=0.5,
-                similarity_boost=0.8,
+                stability=0.0,
+                similarity_boost=1.0,
                 style=0.0,
                 use_speaker_boost=True,
                 speed=1.0,
@@ -291,10 +291,11 @@ async def chat_with_voice():
                     model_id=VOICE_MODEL,
                     optimize_streaming_latency=3,  # Optimize for lowest latency
                     voice_settings=VoiceSettings(
-                        stability=0.4,  # Slightly reduced for faster generation
-                        similarity_boost=0.75,
+                        stability=0.0,
+                        similarity_boost=1.0,
                         style=0.0,
                         use_speaker_boost=True,
+                        speed=1.0,
                     ),
                 )
             elif hasattr(elevenlabs, 'generate'):
