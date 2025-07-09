@@ -7,19 +7,26 @@ export const Config = {
       audio: {
         channelCount: 1,
         sampleRate: 16000,
-        echoCancellation: false,
-        noiseSuppression: true,
-        autoGainControl: true
+        echoCancellation: false,       // Keep disabled for raw audio
+        noiseSuppression: false,       // Disable to preserve voice quality
+        autoGainControl: false,        // Disable to preserve dynamics
+        sampleSize: 16,                // 16-bit audio for better quality
+        // Browser-specific optimizations
+        googEchoCancellation: false,
+        googAutoGainControl: false,
+        googNoiseSuppression: false,
+        googHighpassFilter: false,
+        googTypingNoiseDetection: false
       }
     },
     recording: {
       mimeType: 'audio/webm',
-      audioBitsPerSecond: 16000
+      audioBitsPerSecond: 128000      // Increase bitrate for better quality
     }
   },
   
   whisper: {
-    model: 'Xenova/whisper-tiny.en',
+    model: 'Xenova/whisper-small.en',
     quantized: true,
     subtask: 'transcribe',
     language: 'english',
@@ -27,7 +34,10 @@ export const Config = {
     stride_length_s: 5,
     temperature: 0.0,
     no_repeat_ngram_size: 3,
-    suppress_tokens: []
+    suppress_tokens: [],
+    beam_size: 5,  // Enable beam search for better accuracy
+    patience: 1.0,
+    suppress_blank: true
   },
   
   vad: {
@@ -37,7 +47,7 @@ export const Config = {
     negativeSpeechThreshold: 0.35,
     minSpeechFrames: 3,
     preSpeechPadFrames: 10,
-    frameSamples: 1536,
+    frameSamples: 2048,          // Increased from 1536 for more stable detection
     sampleRate: 16000
   },
   
