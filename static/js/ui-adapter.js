@@ -84,14 +84,12 @@ class UIAdapter {
                     btn.disabled = true;
                 } else if (isActive === true || isActive === 'active') {
                     btn.textContent = 'STOP LISTENING';
-                    btn.classList.add('active');
                     btn.disabled = false;
                     if (this.elements.audioVisualization) {
                         this.elements.audioVisualization.classList.add('active');
                     }
                 } else {
                     btn.textContent = 'START LISTENING';
-                    btn.classList.remove('active');
                     btn.disabled = false;
                     if (this.elements.audioVisualization) {
                         this.elements.audioVisualization.classList.remove('active');
