@@ -243,8 +243,8 @@ export class SphereAnimation {
         const targetIntensity = this.isListening ? this.settings.intensityTalking : this.settings.intensityIdle;
         const targetParticleSize = this.isListening ? this.settings.particleSizeTalking : this.settings.particleSizeIdle;
         
-        this.uniforms.u_intensity.value += (targetIntensity - this.uniforms.u_intensity.value) * 0.1;
-        this.uniforms.u_partical_size.value += (targetParticleSize - this.uniforms.u_partical_size.value) * 0.1;
+        this.uniforms.u_intensity.value += (targetIntensity - this.uniforms.u_intensity.value) * 0.02;
+        this.uniforms.u_partical_size.value += (targetParticleSize - this.uniforms.u_partical_size.value) * 0.02;
 
         // No rotation - keep sphere stationary
 
