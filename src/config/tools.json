@@ -12,7 +12,7 @@
           "description": "Name of the file to create",
           "required": true,
           "validation": {
-            "pattern": "^[a-zA-Z0-9_\\s\\-']+(\\.\\w+)?$",
+            "pattern": "^[a-zA-Z0-9_\\s\\-]+(\\.\\w+)?$",
             "max_length": 255
           }
         },
@@ -44,7 +44,7 @@
         "allowed_paths": ["~/Desktop"],
         "max_file_size": 1048576
       },
-      "ai_description": "Use this tool when the user asks you to create a document, write a file, or save some text to their desktop. The filename can include spaces and hyphens. If no extension is provided, it defaults to .md. You can also specify an extension parameter separately."
+      "ai_description": "Use this tool when the user asks you to create a document, write a file, or save some text to their desktop. The filename can include spaces, hyphens, and underscores but NOT apostrophes - convert apostrophes to hyphens (e.g., 'to-do's' becomes 'to-dos'). If no extension is provided, it defaults to .md. You can also specify an extension parameter separately."
     }
   ],
   "settings": {
