@@ -1,6 +1,48 @@
 // Debug version of Whisper Web Worker with extensive logging
 console.log('[WhisperWorker] Worker script loaded');
 
+// Suppress ONNX Runtime warnings in the worker context
+const originalConsole = {
+    warn: console.warn,
+    log: console.log,
+    error: console.error
+};
+
+// Filter function for ONNX warnings
+const shouldSuppressLog = (args) => {
+    const text = args.map(arg => String(arg)).join(' ');
+    return text.includes('CleanUnusedInitializersAndNodeArgs') || 
+           text.includes('Removing initializer') ||
+           text.includes('onnxruntime') ||
+           text.includes('graph.cc') ||
+           text.includes('[W:onnxruntime') ||
+           text.includes('Constant_output_0') ||
+           text.includes('model/decoder');
+};
+
+// Override all console methods to filter ONNX warnings
+console.warn = function(...args) {
+    if (!shouldSuppressLog(args)) {
+        originalConsole.warn.apply(console, args);
+    }
+};
+
+console.log = function(...args) {
+    if (!shouldSuppressLog(args)) {
+        originalConsole.log.apply(console, args);
+    }
+};
+
+// Also intercept the global console object that might be used by WASM
+if (globalThis.console) {
+    const globalWarn = globalThis.console.warn;
+    globalThis.console.warn = function(...args) {
+        if (!shouldSuppressLog(args)) {
+            globalWarn.apply(globalThis.console, args);
+        }
+    };
+}
+
 let pipeline = null;
 let env = null;
 let isInitialized = false;
@@ -48,15 +90,41 @@ async function initialize() {
         
         // Configure environment
         env.allowLocalModels = false;
-        // Suppress ONNX runtime warnings about unused initializers
-        env.onnx = env.onnx || {};
-        env.onnx.logLevel = 'error'; // Only show errors, not warnings
         env.remoteURL = 'https://huggingface.co/';
         
-        // Suppress ONNX Runtime warnings globally
+        // Aggressive ONNX configuration with session options
+        env.onnx = env.onnx || {};
+        env.onnx.logLevel = 'error';
+        env.onnx.wasm = env.onnx.wasm || {};
+        env.onnx.wasm.logLevel = 'error';
+        env.onnx.wasm.numThreads = 1;
+        
+        // Configure session options to disable graph optimization warnings
+        env.onnx.sessionOptions = env.onnx.sessionOptions || {};
+        env.onnx.sessionOptions.logSeverityLevel = 3; // Only errors
+        env.onnx.sessionOptions.graphOptimizationLevel = 'disabled'; // Disable optimization
+        
+        // Set global ONNX runtime config
         if (globalThis.ort) {
-            globalThis.ort.env.logLevel = 'error';  // Only show errors
-            globalThis.ort.env.wasm.numThreads = 1;  // Single thread for consistency
+            globalThis.ort.env.logLevel = 'error';
+            globalThis.ort.env.debug = false;
+            globalThis.ort.env.logSeverityLevel = 3;
+            globalThis.ort.env.wasm = globalThis.ort.env.wasm || {};
+            globalThis.ort.env.wasm.numThreads = 1;
+            globalThis.ort.env.wasm.logLevel = 'error';
+            
+            // Try to set session options globally
+            if (globalThis.ort.SessionOptions) {
+                const defaultOptions = new globalThis.ort.SessionOptions();
+                defaultOptions.logSeverityLevel = 3;
+                defaultOptions.graphOptimizationLevel = 0; // ORT_DISABLE_ALL
+            }
+        }
+        
+        // Override the module's internal console to filter warnings
+        if (module.env && module.env.onnx) {
+            module.env.onnx.logLevel = 'error';
+            module.env.onnx.logSeverityLevel = 3;
         }
         
         console.log('[WhisperWorker] Environment configured');
