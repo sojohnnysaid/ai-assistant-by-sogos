@@ -150,10 +150,11 @@ export class SphereAnimation {
         this.settings = {
             colorA: '#0b435f',
             colorB: '#9230aa',
-            speed: 0.95,
-            intensityIdle: 0.01,
-            intensityTalking: 0.10,
-            particleSize: 36
+            speed: 0.30,
+            intensityIdle: 0.02,
+            intensityTalking: 0.20,
+            particleSizeIdle: 15,
+            particleSizeTalking: 35
         };
         
         this.init();
@@ -202,7 +203,7 @@ export class SphereAnimation {
             u_time: { value: 0.0 },
             u_speed: { value: this.settings.speed },
             u_intensity: { value: this.settings.intensityIdle },
-            u_partical_size: { value: this.settings.particleSize },
+            u_partical_size: { value: this.settings.particleSizeIdle },
             u_color_a: { value: new THREE.Color(this.settings.colorA) },
             u_color_b: { value: new THREE.Color(this.settings.colorB) }
         };
@@ -238,9 +239,12 @@ export class SphereAnimation {
         // Update time
         this.uniforms.u_time.value = performance.now() * 0.001;
 
-        // Smoothly interpolate intensity
+        // Smoothly interpolate intensity and particle size
         const targetIntensity = this.isListening ? this.settings.intensityTalking : this.settings.intensityIdle;
+        const targetParticleSize = this.isListening ? this.settings.particleSizeTalking : this.settings.particleSizeIdle;
+        
         this.uniforms.u_intensity.value += (targetIntensity - this.uniforms.u_intensity.value) * 0.1;
+        this.uniforms.u_partical_size.value += (targetParticleSize - this.uniforms.u_partical_size.value) * 0.1;
 
         // Rotate sphere
         this.sphere.rotation.y += 0.002;
