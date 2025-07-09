@@ -8,17 +8,36 @@
     <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
     <script>
-        // Configure ONNX Runtime to suppress warnings
-        window.addEventListener('DOMContentLoaded', () => {
-            if (typeof ort !== 'undefined') {
-                ort.env.logLevel = 'error';
-                ort.env.wasm.numThreads = 1;
-                // Suppress WebAssembly warnings
-                ort.env.wasm.simd = true;
-                ort.env.debug = false;
-                ort.env.wasm.proxy = false;
+        // Configure ONNX Runtime before it loads
+        window.ort = window.ort || {};
+        window.ort.env = window.ort.env || {};
+        window.ort.env.wasm = window.ort.env.wasm || {};
+        
+        // Set to error level to suppress warnings
+        window.ort.env.logLevel = 'error';
+        window.ort.env.debug = false;
+        
+        // WASM settings
+        window.ort.env.wasm.numThreads = 1;
+        window.ort.env.wasm.simd = true;
+        window.ort.env.wasm.proxy = false;
+        
+        // Additional settings to suppress graph optimization warnings
+        window.ort.env.wasm.trace = false;
+        window.ort.env.wasm.logLevel = 'error';
+        
+        // Override console methods for transformers library warnings
+        const originalWarn = console.warn;
+        console.warn = function(...args) {
+            // Filter out ONNX Runtime graph optimization warnings
+            const warningText = args.join(' ');
+            if (warningText.includes('CleanUnusedInitializersAndNodeArgs') || 
+                warningText.includes('Removing initializer') ||
+                warningText.includes('onnxruntime')) {
+                return;
             }
-        });
+            originalWarn.apply(console, args);
+        };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js"></script>
     
