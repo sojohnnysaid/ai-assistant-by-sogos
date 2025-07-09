@@ -203,9 +203,13 @@ self.addEventListener('message', async (event) => {
             
             console.log('[WhisperWorker] Transcribing audio:', audio.length, 'samples');
             
-            // Check audio data validity
-            const minVal = Math.min(...audio);
-            const maxVal = Math.max(...audio);
+            // Check audio data validity - use reduce to avoid stack overflow with large arrays
+            let minVal = audio[0];
+            let maxVal = audio[0];
+            for (let i = 1; i < audio.length; i++) {
+                if (audio[i] < minVal) minVal = audio[i];
+                if (audio[i] > maxVal) maxVal = audio[i];
+            }
             console.log('[WhisperWorker] Audio range:', minVal, 'to', maxVal);
             
             const result = await transcriber(audio, {
