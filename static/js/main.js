@@ -355,6 +355,11 @@ async function initializeApp() {
     const app = new VoiceChatApp();
     await app.initialize();
     
+    // Connect UIAdapter to event bus if it exists
+    if (window.uiAdapter && window.uiAdapter.setEventBus) {
+        window.uiAdapter.setEventBus(app.eventBus);
+    }
+    
     // Make app instance available globally for debugging
     window.app = {
       instance: app,

@@ -6,6 +6,7 @@
 class UIAdapter {
     constructor() {
         this.isAIMode = true; // Default to AI chat mode
+        this.eventBus = null; // Will be set by VoiceChatApp
         this.initializeElements();
         // Delay setup to ensure main app is loaded
         if (document.readyState === 'loading') {
@@ -30,6 +31,29 @@ class UIAdapter {
             ttsLatency: document.getElementById('ttsLatency'),
             overallLatency: document.getElementById('overallLatency')
         };
+    }
+    
+    setEventBus(eventBus) {
+        this.eventBus = eventBus;
+        this.setupSpeechEventListeners();
+    }
+    
+    setupSpeechEventListeners() {
+        if (!this.eventBus) return;
+        
+        // Animate audio bars when speech starts
+        this.eventBus.on('speech:start', () => {
+            if (this.elements.audioVisualization) {
+                this.elements.audioVisualization.classList.add('active');
+            }
+        });
+        
+        // Stop animation when speech ends
+        this.eventBus.on('speech:end', () => {
+            if (this.elements.audioVisualization) {
+                this.elements.audioVisualization.classList.remove('active');
+            }
+        });
     }
 
     setupCompatibility() {
@@ -87,15 +111,11 @@ class UIAdapter {
                 } else if (isActive === true || isActive === 'active') {
                     btn.textContent = 'STOP LISTENING';
                     btn.disabled = false;
-                    if (this.elements.audioVisualization) {
-                        this.elements.audioVisualization.classList.add('active');
-                    }
+                    // Audio visualization is now controlled by speech events
                 } else {
                     btn.textContent = 'START LISTENING';
                     btn.disabled = false;
-                    if (this.elements.audioVisualization) {
-                        this.elements.audioVisualization.classList.remove('active');
-                    }
+                    // Audio visualization is now controlled by speech events
                 }
             }
             
@@ -222,12 +242,7 @@ class UIAdapter {
                 if (originals.updateTranscriptionStatus) {
                     originals.updateTranscriptionStatus(status, isError);
                 }
-                // Update audio visualization based on status
-                if (status.includes('Speaking') && adapter.elements.audioVisualization) {
-                    adapter.elements.audioVisualization.classList.add('active');
-                } else if (adapter.elements.audioVisualization) {
-                    adapter.elements.audioVisualization.classList.remove('active');
-                }
+                // Audio visualization is now controlled by speech:start and speech:end events
             };
 
             ui.setChatMode = function(enabled) {

@@ -44,7 +44,7 @@
         "allowed_paths": ["~/Desktop"],
         "max_file_size": 1048576
       },
-      "ai_description": "Use this tool when the user asks you to create a document, write a file, or save some text to their desktop. The filename can include spaces, hyphens, and underscores but NOT apostrophes - convert apostrophes to hyphens (e.g., 'to-do's' becomes 'to-dos'). If no extension is provided, it defaults to .md. You can also specify an extension parameter separately."
+      "ai_description": "Use this tool when the user asks you to create a document, write a file, or save some text to their desktop. IMPORTANT: If the user doesn't specify an extension, add '.md' to the filename (e.g., 'todos' becomes 'todos.md'). The filename can include spaces, hyphens, and underscores but NOT apostrophes - convert apostrophes to hyphens (e.g., 'to-do's' becomes 'to-dos.md'). You can also use the extension parameter if the user specifies a different format like .txt or .json."
     }
   ],
   "settings": {
