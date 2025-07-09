@@ -1,48 +1,6 @@
 // Debug version of Whisper Web Worker with extensive logging
 console.log('[WhisperWorker] Worker script loaded');
 
-// Suppress ONNX Runtime warnings in the worker context
-const originalConsole = {
-    warn: console.warn,
-    log: console.log,
-    error: console.error
-};
-
-// Filter function for ONNX warnings
-const shouldSuppressLog = (args) => {
-    const text = args.map(arg => String(arg)).join(' ');
-    return text.includes('CleanUnusedInitializersAndNodeArgs') || 
-           text.includes('Removing initializer') ||
-           text.includes('onnxruntime') ||
-           text.includes('graph.cc') ||
-           text.includes('[W:onnxruntime') ||
-           text.includes('Constant_output_0') ||
-           text.includes('model/decoder');
-};
-
-// Override all console methods to filter ONNX warnings
-console.warn = function(...args) {
-    if (!shouldSuppressLog(args)) {
-        originalConsole.warn.apply(console, args);
-    }
-};
-
-console.log = function(...args) {
-    if (!shouldSuppressLog(args)) {
-        originalConsole.log.apply(console, args);
-    }
-};
-
-// Also intercept the global console object that might be used by WASM
-if (globalThis.console) {
-    const globalWarn = globalThis.console.warn;
-    globalThis.console.warn = function(...args) {
-        if (!shouldSuppressLog(args)) {
-            globalWarn.apply(globalThis.console, args);
-        }
-    };
-}
-
 let pipeline = null;
 let env = null;
 let isInitialized = false;
@@ -88,7 +46,7 @@ async function initialize() {
         pipeline = module.pipeline;
         env = module.env;
         
-        // Configure environment
+        // Configure environment BEFORE suppressing warnings
         env.allowLocalModels = false;
         env.remoteURL = 'https://huggingface.co/';
         
@@ -112,201 +70,192 @@ async function initialize() {
             globalThis.ort.env.wasm = globalThis.ort.env.wasm || {};
             globalThis.ort.env.wasm.numThreads = 1;
             globalThis.ort.env.wasm.logLevel = 'error';
-            
-            // Try to set session options globally
-            if (globalThis.ort.SessionOptions) {
-                const defaultOptions = new globalThis.ort.SessionOptions();
-                defaultOptions.logSeverityLevel = 3;
-                defaultOptions.graphOptimizationLevel = 0; // ORT_DISABLE_ALL
-            }
         }
         
-        // Override the module's internal console to filter warnings
-        if (module.env && module.env.onnx) {
-            module.env.onnx.logLevel = 'error';
-            module.env.onnx.logSeverityLevel = 3;
-        }
+        // NOW suppress console warnings after configuration is done
+        const originalWarn = console.warn;
+        console.warn = function(...args) {
+            const text = args.join(' ');
+            if (text.includes('CleanUnusedInitializersAndNodeArgs') || 
+                text.includes('Removing initializer') ||
+                text.includes('onnxruntime') ||
+                text.includes('graph.cc') ||
+                text.includes('[W:onnxruntime') ||
+                text.includes('Constant_output_0') ||
+                text.includes('model/decoder')) {
+                return;
+            }
+            originalWarn.apply(console, args);
+        };
         
         console.log('[WhisperWorker] Environment configured');
         
         isInitialized = true;
         isLoading = false;
         
+        console.log('[WhisperWorker] Initialization complete');
         self.postMessage({
             type: 'status',
-            status: 'initialized',
-            message: 'Library loaded successfully'
+            status: 'ready',
+            message: 'Transformers library loaded'
         });
         
     } catch (error) {
-        isLoading = false;
         console.error('[WhisperWorker] Failed to initialize:', error);
+        isLoading = false;
         self.postMessage({
             type: 'error',
-            error: error.message || 'Failed to initialize',
-            stack: error.stack
+            error: error.message || 'Failed to initialize'
         });
+        throw error;
     }
 }
 
-// Load the model
+// Load and cache the model
 async function loadModel() {
     console.log('[WhisperWorker] loadModel called');
-    
-    if (!isInitialized) {
-        console.log('[WhisperWorker] Not initialized, calling initialize first');
-        await initialize();
-    }
     
     if (modelInstance) {
         console.log('[WhisperWorker] Model already loaded, returning existing instance');
         return modelInstance;
     }
     
+    if (!isInitialized) {
+        console.log('[WhisperWorker] Not initialized, calling initialize first');
+        await initialize();
+    }
+    
+    console.log('[WhisperWorker] Creating pipeline for whisper-tiny.en...');
+    
     try {
-        console.log('[WhisperWorker] Creating pipeline for whisper-tiny.en...');
-        self.postMessage({
-            type: 'status',
-            status: 'loading',
-            message: 'Loading Whisper model...'
-        });
+        // Send progress updates
+        const progressCallback = (progress) => {
+            console.log('[WhisperWorker] Model loading progress:', progress);
+            self.postMessage({
+                type: 'progress',
+                progress: progress
+            });
+        };
         
-        modelInstance = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', {
-            quantized: true,
-            // Session options to suppress ONNX warnings
-            sessionOptions: {
-                logSeverityLevel: 3, // 0=Verbose, 1=Info, 2=Warning, 3=Error, 4=Fatal
-                graphOptimizationLevel: 'all' // Keep optimizations for performance
-            },
-            device: 'cpu',
-            progress_callback: (progress) => {
-                console.log('[WhisperWorker] Model loading progress:', progress);
-                self.postMessage({
-                    type: 'progress',
-                    progress: Math.round(progress.progress * 100),
-                    message: `Loading: ${Math.round(progress.progress * 100)}%`
-                });
+        // Create the pipeline
+        modelInstance = await pipeline(
+            'automatic-speech-recognition',
+            'Xenova/whisper-tiny.en',
+            {
+                progress_callback: progressCallback,
+                revision: 'main',
+                device: 'wasm',
+                dtype: 'q8',
             }
-        });
+        );
         
         console.log('[WhisperWorker] Model loaded successfully');
         return modelInstance;
         
     } catch (error) {
         console.error('[WhisperWorker] Failed to load model:', error);
+        self.postMessage({
+            type: 'error',
+            error: error.message || 'Failed to load model'
+        });
         throw error;
     }
 }
 
-// Handle messages
+// Message handler
 self.addEventListener('message', async (event) => {
-    const { id, type, audio, options } = event.data;
-    console.log(`[WhisperWorker] Processing message - type: ${type}, id: ${id}, hasAudio: ${!!audio}`);
+    const { type, id, audio, options } = event.data;
     
-    switch (type) {
-        case 'init':
-            try {
-                console.log('[WhisperWorker] Handling init message');
-                
-                // Load the model
-                await loadModel();
-                
-                console.log('[WhisperWorker] Sending ready response');
-                self.postMessage({
-                    id,
-                    type: 'ready',
-                    status: 'ready',
-                    message: 'Model loaded and ready'
-                });
-                
-            } catch (error) {
-                console.error('[WhisperWorker] Init error:', error);
-                self.postMessage({
-                    id,
-                    type: 'error',
-                    status: 'error',
-                    error: error.message || 'Failed to load model',
-                    stack: error.stack
-                });
-            }
-            break;
+    console.log('[WhisperWorker] Processing message - type:', type, 'id:', id, 'hasAudio:', !!audio);
+    
+    try {
+        if (type === 'init') {
+            console.log('[WhisperWorker] Handling init message');
+            await loadModel();
+            console.log('[WhisperWorker] Sending ready response');
+            self.postMessage({
+                id,
+                type: 'ready',
+                message: 'Model loaded and ready'
+            });
+        } 
+        else if (type === 'transcribe') {
+            console.log('[WhisperWorker] Handling transcribe message');
+            console.log('[WhisperWorker] Audio info:', {
+                hasAudio: !!audio,
+                audioType: audio ? audio.constructor.name : 'none',
+                audioLength: audio ? audio.length : 0,
+                hasOptions: !!options
+            });
             
-        case 'transcribe':
-            try {
-                console.log('[WhisperWorker] Handling transcribe message');
-                console.log('[WhisperWorker] Audio info:', {
-                    hasAudio: !!audio,
-                    audioType: audio ? audio.constructor.name : 'none',
-                    audioLength: audio ? audio.length : 0,
-                    hasOptions: !!options
-                });
-                
-                // Ensure model is loaded
-                const transcriber = await loadModel();
-                
-                // Get audio data
-                const audioData = audio;
-                if (!audioData || audioData.length === 0) {
-                    throw new Error(`No audio data provided. Audio length: ${audio ? audio.length : 'null'}`);
-                }
-                
-                console.log(`[WhisperWorker] Transcribing audio: ${audioData.length} samples`);
-                
-                // Check audio values
-                const maxVal = Math.max(...audioData.slice(0, 100));
-                const minVal = Math.min(...audioData.slice(0, 100));
-                console.log(`[WhisperWorker] Audio range: ${minVal} to ${maxVal}`);
-                
-                // Transcribe
-                const output = await transcriber(audioData, {
-                    return_timestamps: false,
-                    chunk_length_s: 30,
-                    stride_length_s: 5,
-                });
-                
-                console.log('[WhisperWorker] Transcription result:', output);
-                
+            const transcriber = await loadModel();
+            
+            if (!audio || audio.length === 0) {
+                console.warn('[WhisperWorker] No audio data provided');
                 self.postMessage({
                     id,
                     type: 'result',
-                    status: 'success',
-                    result: {
-                        text: output.text || '',
-                        timestamp: Date.now()
-                    }
+                    text: '',
+                    error: 'No audio data provided'
                 });
-                
-            } catch (error) {
-                console.error('[WhisperWorker] Transcription error:', error);
-                self.postMessage({
-                    id,
-                    type: 'error',
-                    status: 'error',
-                    error: error.message || 'Transcription failed',
-                    stack: error.stack
-                });
+                return;
             }
-            break;
             
-        default:
-            console.warn(`[WhisperWorker] Unknown message type: ${type}`);
+            console.log('[WhisperWorker] Transcribing audio:', audio.length, 'samples');
+            
+            // Check audio data validity
+            const minVal = Math.min(...audio);
+            const maxVal = Math.max(...audio);
+            console.log('[WhisperWorker] Audio range:', minVal, 'to', maxVal);
+            
+            const result = await transcriber(audio, {
+                ...options,
+                return_timestamps: false,
+                chunk_length_s: 30,
+                stride_length_s: 5
+            });
+            
+            console.log('[WhisperWorker] Transcription result:', result);
+            
+            self.postMessage({
+                id,
+                type: 'result',
+                text: result.text || ''
+            });
+        }
+        else {
+            console.warn('[WhisperWorker] Unknown message type:', type);
             self.postMessage({
                 id,
                 type: 'error',
                 error: `Unknown message type: ${type}`
             });
+        }
+    } catch (error) {
+        console.error('[WhisperWorker] Message handler error:', error);
+        self.postMessage({
+            id,
+            type: 'error',
+            error: error.message || 'Processing failed'
+        });
     }
 });
 
-// Notify that worker is ready
-console.log('[WhisperWorker] Sending initial ready message');
-self.postMessage({
-    type: 'init',
-    status: 'ready',
-    message: 'Worker ready'
+// Additional message listener for debugging
+self.addEventListener('message', (event) => {
+    if (event.data.type === 'init') {
+        console.log('[WhisperWorker] Received init message, details:', event.data);
+    }
 });
 
-// Preload model immediately for faster first transcription
+// Send a ready message when the worker loads
+console.log('[WhisperWorker] Sending initial ready message');
+self.postMessage({
+    type: 'ready',
+    message: 'Worker script loaded'
+});
+
+// Preload the model after a short delay
 setTimeout(async () => {
     console.log('[WhisperWorker] Preloading model...');
     try {
