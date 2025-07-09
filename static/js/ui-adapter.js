@@ -40,7 +40,9 @@ class UIAdapter {
         this.setupEventListeners();
         
         // Override UIController methods after a delay to ensure it exists
-        setTimeout(() => this.overrideUIControllerMethods(), 200);
+        setTimeout(() => this.overrideUIControllerMethods(), 500);
+        // Try again after a longer delay in case app loads slowly
+        setTimeout(() => this.overrideUIControllerMethods(), 1500);
     }
 
     createCompatibilityElements() {
@@ -123,7 +125,7 @@ class UIAdapter {
         // Wait for UIController to be available
         const checkAndOverride = () => {
             const uiController = window.UIController || window.uiController || 
-                                (window.app && window.app.ui) || 
+                                (window.app && window.app.instance && window.app.instance.ui) || 
                                 document.querySelector('[data-ui-controller]');
             
             if (!uiController) {
